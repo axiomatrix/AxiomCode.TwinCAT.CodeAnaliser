@@ -18,6 +18,11 @@
   --reason-nomethod-bg: #3b2020; --reason-nomethod-fg: #f87171;
   --reason-missing-bg: #2d2040; --reason-missing-fg: #c084fc;
   --reason-dead-bg: #1a2030; --reason-dead-fg: #94a3b8;
+  --link: #7dd3fc; --scope-input: #3b82f6; --scope-output: #22c55e; --scope-inout: #a855f7;
+  --scope-local: #6b7280; --scope-var: #6b7280; --scope-temp: #8b5cf6; --scope-stat: #f59e0b;
+  --vis-public: #22c55e; --vis-protected: #f97316; --vis-private: #ef4444; --vis-internal: #3b82f6;
+  --syn-keyword: #569cd6; --syn-string: #6a9955; --syn-comment: #6a737d; --syn-number: #d19a66;
+  --syn-type: #c586c0; --syn-operator: #d4d4d4;
 }
 [data-theme="light"] {
   --bg: #f5f5f7; --panel: #ffffff; --panel-alt: #f0f0f5; --border: #d0d0dd;
@@ -30,6 +35,11 @@
   --reason-nomethod-bg: #fef2f2; --reason-nomethod-fg: #dc2626;
   --reason-missing-bg: #faf5ff; --reason-missing-fg: #7c3aed;
   --reason-dead-bg: #f1f5f9; --reason-dead-fg: #64748b;
+  --link: #2563eb; --scope-input: #2563eb; --scope-output: #16a34a; --scope-inout: #7c3aed;
+  --scope-local: #6b7280; --scope-var: #6b7280; --scope-temp: #7c3aed; --scope-stat: #ca8a04;
+  --vis-public: #16a34a; --vis-protected: #ea580c; --vis-private: #dc2626; --vis-internal: #2563eb;
+  --syn-keyword: #0000ff; --syn-string: #008000; --syn-comment: #808080; --syn-number: #b5742e;
+  --syn-type: #af00db; --syn-operator: #1a1a2e;
 }
 html, body { height: 100%; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; overflow: hidden; }
 a { color: var(--accent); text-decoration: none; }
@@ -71,6 +81,14 @@ a:hover { text-decoration: underline; }
 .btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 .btn-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 4px 8px; }
 .btn-close:hover { color: var(--text); }
+
+/* View mode buttons */
+.view-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-alt); color: var(--muted); cursor: pointer; font-size: 12px; white-space: nowrap; transition: all 0.15s; }
+.view-btn:hover { border-color: var(--accent); color: var(--text); }
+.view-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+.view-switcher { display: inline-flex; gap: 0; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-right: 4px; }
+.view-switcher .view-btn { border: none; border-radius: 0; border-right: 1px solid var(--border); }
+.view-switcher .view-btn:last-child { border-right: none; }
 
 /* Inputs */
 input[type="text"], select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 12px; }
@@ -145,17 +163,20 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 .layer-badge-cm { background: rgba(251,146,60,0.2); color: var(--cm); }
 .layer-badge-dm { background: rgba(148,163,184,0.2); color: var(--dm); }
 
-#detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+#detail-tabs { display: flex; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .tab-btn { padding: 8px 14px; font-size: 12px; cursor: pointer; border: none; background: none; color: var(--muted); border-bottom: 2px solid transparent; }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn.disabled { opacity: 0.3; cursor: default; pointer-events: none; }
 #detail-body { flex: 1; overflow-y: auto; padding: 12px; }
 
 /* Tables */
 .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.detail-table th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; background: var(--panel); }
+.detail-table th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .detail-table td { padding: 5px 8px; border-bottom: 1px solid rgba(45,45,78,0.5); }
 .detail-table tr:hover td { background: rgba(167,139,250,0.05); }
+.detail-table .mono { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; }
+.detail-table .at-binding { color: var(--accent); font-weight: 600; }
 
 /* State machine */
 .sm-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; background: var(--panel-alt); }
@@ -166,8 +187,89 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 .sm-zoom-controls { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; z-index: 5; }
 .sm-zoom-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
 .sm-zoom-btn:hover { opacity: 1; border-color: var(--accent); }
-.sm-code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; display: none; color: #c9d1d9; }
+.sm-code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; display: none; line-height: 1.5; }
 .sm-code.visible { display: block; }
+
+/* Code blocks for methods/properties */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow: auto; line-height: 1.5; margin-top: 8px; }
+.code-block .kw { color: var(--syn-keyword); font-weight: 600; }
+.code-block .str { color: var(--syn-string); }
+.code-block .cmt { color: var(--syn-comment); font-style: italic; }
+.code-block .num { color: var(--syn-number); }
+.code-block .typ { color: var(--syn-type); }
+
+/* Scope badges */
+.scope-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+.scope-input { background: rgba(59,130,246,0.15); color: var(--scope-input); }
+.scope-output { background: rgba(34,197,94,0.15); color: var(--scope-output); }
+.scope-inout { background: rgba(168,85,247,0.15); color: var(--scope-inout); }
+.scope-local, .scope-var { background: rgba(107,114,128,0.15); color: var(--scope-local); }
+.scope-temp { background: rgba(139,92,246,0.15); color: var(--scope-temp); }
+.scope-stat { background: rgba(245,158,11,0.15); color: var(--scope-stat); }
+.scope-constant { background: rgba(236,72,153,0.15); color: #ec4899; }
+
+/* Visibility badges */
+.vis-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+.vis-public { background: rgba(34,197,94,0.15); color: var(--vis-public); }
+.vis-protected { background: rgba(249,115,22,0.15); color: var(--vis-protected); }
+.vis-private { background: rgba(239,68,68,0.15); color: var(--vis-private); }
+.vis-internal { background: rgba(59,130,246,0.15); color: var(--vis-internal); }
+
+/* POU type badges */
+.pou-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; margin-left: 6px; }
+.pou-fb { background: rgba(167,139,250,0.2); color: var(--accent); }
+.pou-fn { background: rgba(96,165,250,0.2); color: var(--um); }
+.pou-prg { background: rgba(74,222,128,0.2); color: var(--em); }
+.pou-itf { background: rgba(251,146,60,0.2); color: var(--cm); }
+
+/* DUT type badges */
+.dut-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; margin-left: 6px; }
+.dut-enum { background: rgba(234,179,8,0.2); color: var(--advisory); }
+.dut-struct { background: rgba(96,165,250,0.2); color: var(--um); }
+.dut-union { background: rgba(168,85,247,0.2); color: #a855f7; }
+.dut-alias { background: rgba(107,114,128,0.2); color: var(--muted); }
+
+/* Flat list items */
+.flat-list { display: flex; flex-direction: column; gap: 2px; }
+.flat-item { display: flex; align-items: center; padding: 6px 10px; border-radius: 4px; cursor: pointer; gap: 6px; min-height: 30px; }
+.flat-item:hover { background: var(--hover-bg); }
+.flat-item.selected { background: var(--selected-bg); }
+.flat-item .flat-name { font-weight: 600; }
+.flat-item .flat-sub { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.flat-item.dimmed { opacity: 0.25; }
+.flat-item.hidden-filter { display: none; }
+
+/* Expandable method/property cards */
+.expand-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: var(--panel-alt); }
+.expand-header { display: flex; align-items: center; gap: 6px; padding: 8px 12px; cursor: pointer; flex-wrap: wrap; }
+.expand-header:hover { background: var(--hover-bg); }
+.expand-body { display: none; padding: 0 12px 12px; }
+.expand-body.open { display: block; }
+.expand-toggle { font-size: 10px; color: var(--muted); width: 16px; text-align: center; flex-shrink: 0; }
+.method-name { font-weight: 600; font-size: 13px; }
+.method-ret { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; color: var(--muted); }
+.method-params { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.prop-getter, .prop-setter { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+.prop-getter { background: rgba(34,197,94,0.15); color: var(--vis-public); }
+.prop-setter { background: rgba(249,115,22,0.15); color: var(--vis-protected); }
+
+/* Cross-reference link */
+.xref { color: var(--link); cursor: pointer; text-decoration: none; border-bottom: 1px dotted var(--link); }
+.xref:hover { text-decoration: none; border-bottom-style: solid; }
+
+/* Overview info grid */
+.info-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; margin-bottom: 12px; }
+.info-grid .label { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+.info-grid .value { color: var(--text); }
+.info-grid .value .mono { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; }
+
+/* Scope group header */
+.scope-group-header { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--accent); padding: 8px 8px 4px; border-bottom: 1px solid var(--border); margin-top: 8px; }
+.scope-group-header:first-child { margin-top: 0; }
+
+/* Variable search */
+.var-search { width: 100%; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 12px; margin-bottom: 8px; }
+.var-search::placeholder { color: var(--muted); }
 
 /* Sidebar docs */
 .doc-section { margin-bottom: 20px; }
@@ -193,6 +295,12 @@ body.resizing .resize-handle { pointer-events: auto !important; }
 
 /* Theme toggle button */
 .btn-theme { font-size: 16px; padding: 3px 8px; min-width: 32px; text-align: center; }
+
+/* Search highlight */
+.search-hl { background: rgba(234,179,8,0.3); border-radius: 2px; padding: 0 1px; }
+
+/* Separator in toolbar */
+.toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -200,9 +308,9 @@ body.resizing .resize-handle { pointer-events: auto !important; }
   <!-- Stats Bar -->
   <div id="stats-bar">
     <span id="project-name"></span>
-    <div class="stat-chip stat-toggle" data-chip="pou" title="Show only modules (click to filter)"><span class="stat-val" id="s-pou">-</span> POUs</div>
-    <div class="stat-chip stat-toggle" data-chip="dut" title="DUT count (info only)"><span class="stat-val" id="s-dut">-</span> DUTs</div>
-    <div class="stat-chip stat-toggle" data-chip="gvl" title="GVL count (info only)"><span class="stat-val" id="s-gvl">-</span> GVLs</div>
+    <div class="stat-chip stat-toggle" data-chip="pou" title="Show POU list view"><span class="stat-val" id="s-pou">-</span> POUs</div>
+    <div class="stat-chip stat-toggle" data-chip="dut" title="Show DUT list view"><span class="stat-val" id="s-dut">-</span> DUTs</div>
+    <div class="stat-chip stat-toggle" data-chip="gvl" title="Show GVL list view"><span class="stat-val" id="s-gvl">-</span> GVLs</div>
     <div class="stat-chip critical stat-toggle" data-chip="Critical" title="Show only Critical alarms"><span class="stat-val" id="s-crit">-</span> Critical</div>
     <div class="stat-chip process stat-toggle" data-chip="Process" title="Show only Process alarms"><span class="stat-val" id="s-proc">-</span> Process</div>
     <div class="stat-chip advisory stat-toggle" data-chip="Advisory" title="Show only Advisory alarms"><span class="stat-val" id="s-adv">-</span> Advisory</div>
@@ -224,6 +332,8 @@ body.resizing .resize-handle { pointer-events: auto !important; }
           <li>Hover over alarm nodes for full details in a tooltip</li>
           <li>In the detail panel, switch tabs to view alarms, state machines, IO, etc.</li>
           <li>Click a state in the SVG diagram to show its Structured Text code</li>
+          <li>Use the view switcher to browse POUs, DUTs, and GVLs</li>
+          <li>Click stat chips to switch views or filter the tree</li>
         </ul>
       </div>
       <div class="doc-section">
@@ -290,6 +400,14 @@ body.resizing .resize-handle { pointer-events: auto !important; }
       <div id="toolbar">
         <button class="btn btn-theme" id="btn-theme" title="Toggle light/dark theme">&#x263E;</button>
         <button class="btn" id="btn-sidebar" title="Toggle documentation sidebar">&#x2630; Docs</button>
+        <div class="toolbar-sep"></div>
+        <div class="view-switcher">
+          <button class="view-btn active" data-view="tree">Tree View</button>
+          <button class="view-btn" data-view="pous">POUs</button>
+          <button class="view-btn" data-view="duts">DUTs</button>
+          <button class="view-btn" data-view="gvls">GVLs</button>
+        </div>
+        <div class="toolbar-sep"></div>
         <button class="btn" id="btn-expand">Expand All</button>
         <button class="btn" id="btn-collapse">Collapse All</button>
         <button class="btn" id="btn-alarms-only">Alarms Only</button>
@@ -329,7 +447,11 @@ body.resizing .resize-handle { pointer-events: auto !important; }
         <button class="btn-close" id="btn-close-detail">&times;</button>
       </div>
       <div id="detail-tabs">
-        <button class="tab-btn active" data-tab="alarms">Alarms</button>
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="variables">Variables</button>
+        <button class="tab-btn" data-tab="methods">Methods</button>
+        <button class="tab-btn" data-tab="properties">Properties</button>
+        <button class="tab-btn" data-tab="alarms">Alarms</button>
         <button class="tab-btn" data-tab="statemachines">State Machines</button>
         <button class="tab-btn" data-tab="io">IO</button>
       </div>
@@ -421,9 +543,8 @@ function nodeMatchesChip(node, chip) {
   if (!chip) return true;
   if (chip === 'sm') return hasStateMachines(node);
   if (chip === 'io') return hasIoMappings(node);
-  if (chip === 'pou') return true; // all nodes are POUs
-  if (chip === 'dut' || chip === 'gvl') return true; // info only
-  // Severity filters
+  if (chip === 'pou') return true;
+  if (chip === 'dut' || chip === 'gvl') return true;
   return hasAlarmWithSeverity(node, chip);
 }
 function alarmMatchesChip(alarm, chip) {
@@ -432,21 +553,139 @@ function alarmMatchesChip(alarm, chip) {
   return getSeverity(alarm) === chip;
 }
 
+// ── Syntax Highlighting ──
+function highlightST(code) {
+  if (!code) return '';
+  const escaped = esc(code);
+  // Tokenize: we process in order — comments first, then strings, then keywords/types/numbers
+  let result = '';
+  let i = 0;
+  const src = escaped;
+  while (i < src.length) {
+    // Block comment (* ... *)
+    if (src[i] === '(' && src[i+1] === '*') {
+      let end = src.indexOf('*)', i + 2);
+      if (end < 0) end = src.length - 2;
+      result += '<span class="cmt">' + src.substring(i, end + 2) + '</span>';
+      i = end + 2;
+      continue;
+    }
+    // Line comment //
+    if (src[i] === '/' && src[i+1] === '/') {
+      let end = src.indexOf('\n', i);
+      if (end < 0) end = src.length;
+      result += '<span class="cmt">' + src.substring(i, end) + '</span>';
+      i = end;
+      continue;
+    }
+    // String literal 'text'
+    if (src[i] === "'") {
+      let end = src.indexOf("'", i + 1);
+      if (end < 0) end = src.length;
+      result += '<span class="str">' + src.substring(i, end + 1) + '</span>';
+      i = end + 1;
+      continue;
+    }
+    // Check for word boundary for keywords/types
+    if (/[A-Za-z_]/.test(src[i])) {
+      let j = i;
+      while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++;
+      const word = src.substring(i, j);
+      const upper = word.toUpperCase();
+      const kwSet = new Set(['IF','THEN','ELSE','ELSIF','END_IF','FOR','TO','BY','DO','END_FOR','WHILE','END_WHILE','REPEAT','UNTIL','END_REPEAT','CASE','OF','END_CASE','VAR','VAR_INPUT','VAR_OUTPUT','VAR_IN_OUT','VAR_GLOBAL','VAR_TEMP','VAR_STAT','VAR_INST','END_VAR','FUNCTION_BLOCK','FUNCTION','PROGRAM','METHOD','PROPERTY','INTERFACE','RETURN','EXIT','CONTINUE','TRUE','FALSE','NOT','AND','OR','XOR','MOD','THIS','SUPER','ABSTRACT','FINAL','EXTENDS','IMPLEMENTS','PERSISTENT','RETAIN','CONSTANT','AT','REF','POINTER','ARRAY','OF','STRUCT','END_STRUCT','ENUM','END_ENUM','TYPE','END_TYPE','ACTION','END_ACTION','TRANSITION','END_TRANSITION','STEP','END_STEP','GVL']);
+      const typeSet = new Set(['BOOL','BYTE','WORD','DWORD','LWORD','SINT','INT','DINT','LINT','USINT','UINT','UDINT','ULINT','REAL','LREAL','STRING','WSTRING','TIME','DATE','TOD','DT','LTIME','LDATE','LTOD','LDT','DATE_AND_TIME','TIME_OF_DAY','PVOID','REFERENCE','T_MaxString','OTCID']);
+      if (kwSet.has(upper)) {
+        result += '<span class="kw">' + word + '</span>';
+      } else if (typeSet.has(upper)) {
+        result += '<span class="typ">' + word + '</span>';
+      } else {
+        result += word;
+      }
+      i = j;
+      continue;
+    }
+    // Numbers (including 16#hex, 2#bin, 8#oct)
+    if (/[0-9]/.test(src[i])) {
+      let j = i;
+      // Handle base prefix like 16#, 2#, 8#
+      while (j < src.length && /[0-9A-Fa-f#_.]/.test(src[j])) j++;
+      result += '<span class="num">' + src.substring(i, j) + '</span>';
+      i = j;
+      continue;
+    }
+    result += src[i];
+    i++;
+  }
+  return result;
+}
+
+// ── Cross-Reference Lookups ──
+const pouMap = {};
+const dutMap = {};
+const gvlMap = {};
+
+function buildLookups() {
+  (DATA.pous || []).forEach(p => { pouMap[p.name.toLowerCase()] = p; });
+  (DATA.duts || []).forEach(d => { dutMap[d.name.toLowerCase()] = d; });
+  (DATA.gvls || []).forEach(g => { gvlMap[g.name.toLowerCase()] = g; });
+}
+
+function isKnownType(typeName) {
+  if (!typeName) return false;
+  const lower = typeName.toLowerCase();
+  return !!pouMap[lower] || !!dutMap[lower];
+}
+
+function makeTypeLink(typeName) {
+  if (!typeName) return '';
+  const lower = typeName.toLowerCase();
+  if (pouMap[lower]) {
+    return '<span class="xref" data-xref-pou="' + esc(pouMap[lower].name) + '">' + esc(typeName) + '</span>';
+  }
+  if (dutMap[lower]) {
+    return '<span class="xref" data-xref-dut="' + esc(dutMap[lower].name) + '">' + esc(typeName) + '</span>';
+  }
+  return esc(typeName);
+}
+
+function attachXrefHandlers(container) {
+  container.querySelectorAll('.xref[data-xref-pou]').forEach(el => {
+    el.addEventListener('click', () => {
+      const name = el.dataset.xrefPou;
+      const pou = pouMap[name.toLowerCase()];
+      if (pou) { setViewMode('pous'); showPouDetail(pou); }
+    });
+  });
+  container.querySelectorAll('.xref[data-xref-dut]').forEach(el => {
+    el.addEventListener('click', () => {
+      const name = el.dataset.xrefDut;
+      const dut = dutMap[name.toLowerCase()];
+      if (dut) { setViewMode('duts'); showDutDetail(dut); }
+    });
+  });
+}
+
 // ── State ──
 let selectedNode = null;
+let selectedPou = null;
+let selectedDut = null;
+let selectedGvl = null;
 let allNodeRows = [];
 let allAlarmRows = [];
+let allFlatItems = [];
 let expandedSet = new Set();
 let alarmsOnlyMode = false;
-let activeChip = null; // Currently active stat chip filter
+let activeChip = null;
+let currentView = 'tree';
+let currentDetailType = null; // 'tree', 'pou', 'dut', 'gvl'
 
 // ── Stats ──
 function renderStats() {
   const s = DATA.summary || {};
   document.getElementById('project-name').textContent = DATA.projectName || 'TwinCAT Analysis';
-  document.getElementById('s-pou').textContent = s.pouCount || 0;
-  document.getElementById('s-dut').textContent = s.dutCount || 0;
-  document.getElementById('s-gvl').textContent = s.gvlCount || 0;
+  document.getElementById('s-pou').textContent = s.pouCount || (DATA.pous || []).length || 0;
+  document.getElementById('s-dut').textContent = s.dutCount || (DATA.duts || []).length || 0;
+  document.getElementById('s-gvl').textContent = s.gvlCount || (DATA.gvls || []).length || 0;
   document.getElementById('s-crit').textContent = s.criticalAlarms || 0;
   document.getElementById('s-proc').textContent = s.processAlarms || 0;
   document.getElementById('s-adv').textContent = s.advisoryAlarms || 0;
@@ -455,6 +694,168 @@ function renderStats() {
   document.getElementById('s-sm').textContent = s.stateMachineCount || 0;
   document.getElementById('s-io').textContent = s.ioPointCount || 0;
   document.title = (DATA.projectName || 'TwinCAT') + ' - Code Analysis';
+}
+
+// ── View Mode Switching ──
+function setViewMode(mode) {
+  currentView = mode;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === mode));
+
+  // Show/hide tree-only toolbar items
+  const treeOnly = currentView === 'tree';
+  document.getElementById('btn-expand').style.display = treeOnly ? '' : 'none';
+  document.getElementById('btn-collapse').style.display = treeOnly ? '' : 'none';
+  document.getElementById('btn-alarms-only').style.display = treeOnly ? '' : 'none';
+  document.getElementById('filter-severity').style.display = treeOnly ? '' : 'none';
+  document.getElementById('filter-reason').style.display = treeOnly ? '' : 'none';
+  document.getElementById('cb-hide').parentElement.style.display = treeOnly ? '' : 'none';
+
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  const container = document.getElementById('tree-container');
+  allFlatItems = [];
+
+  if (currentView === 'tree') {
+    container.innerHTML = '';
+    allNodeRows = [];
+    allAlarmRows = [];
+    const tree = DATA.tree || [];
+    if (tree.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">No tree data available.</p>';
+      return;
+    }
+    buildTree(tree, container, 0);
+    applyFilter();
+  } else if (currentView === 'pous') {
+    renderFlatList(container, DATA.pous || [], 'pou');
+  } else if (currentView === 'duts') {
+    renderFlatList(container, DATA.duts || [], 'dut');
+  } else if (currentView === 'gvls') {
+    renderFlatList(container, DATA.gvls || [], 'gvl');
+  }
+}
+
+function renderFlatList(container, items, type) {
+  container.innerHTML = '';
+  if (items.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">No ' + type.toUpperCase() + 's available.</p>';
+    return;
+  }
+
+  const sorted = [...items].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const list = el('div', { className: 'flat-list' });
+
+  for (const item of sorted) {
+    const row = el('div', { className: 'flat-item' });
+    const searchText = buildFlatSearchText(item, type);
+    row.dataset.searchable = searchText;
+
+    if (type === 'pou') {
+      const icon = getPouIcon(item.pouType);
+      row.appendChild(el('span', { className: 'node-icon' }, icon));
+      row.appendChild(el('span', { className: 'flat-name' }, item.name));
+      row.appendChild(makePouBadge(item.pouType));
+      if (item.isAbstract) row.appendChild(el('span', { className: 'flat-sub' }, 'ABSTRACT'));
+      if (item.extendsType) row.appendChild(el('span', { className: 'flat-sub' }, ': ' + item.extendsType));
+      if (item.implementsList && item.implementsList.length > 0) {
+        row.appendChild(el('span', { className: 'flat-sub' }, 'impl ' + item.implementsList.join(', ')));
+      }
+      row.addEventListener('click', () => showPouDetail(item));
+    } else if (type === 'dut') {
+      row.appendChild(el('span', { className: 'node-icon' }, getDutIcon(item.dutType)));
+      row.appendChild(el('span', { className: 'flat-name' }, item.name));
+      row.appendChild(makeDutBadge(item.dutType));
+      if (item.baseType) row.appendChild(el('span', { className: 'flat-sub' }, ': ' + item.baseType));
+      const memberCount = (item.enumValues || item.members || []).length;
+      if (memberCount > 0) row.appendChild(el('span', { className: 'flat-sub' }, '(' + memberCount + ' members)'));
+      row.addEventListener('click', () => showDutDetail(item));
+    } else if (type === 'gvl') {
+      row.appendChild(el('span', { className: 'node-icon' }, '\uD83C\uDF10'));
+      row.appendChild(el('span', { className: 'flat-name' }, item.name));
+      if (item.qualifiedOnly) row.appendChild(el('span', { className: 'flat-sub' }, '{attribute \'qualified_only\'}'));
+      const varCount = (item.variables || []).length;
+      if (varCount > 0) row.appendChild(el('span', { className: 'flat-sub' }, '(' + varCount + ' variables)'));
+      row.addEventListener('click', () => showGvlDetail(item));
+    }
+
+    list.appendChild(row);
+    allFlatItems.push({ el: row, item, type });
+  }
+  container.appendChild(list);
+  applyFlatFilter();
+}
+
+function buildFlatSearchText(item, type) {
+  const parts = [item.name || ''];
+  if (type === 'pou') {
+    parts.push(item.pouType || '', item.extendsType || '');
+    (item.implementsList || []).forEach(i => parts.push(i));
+    (item.variables || []).forEach(v => parts.push(v.name || '', v.dataType || ''));
+    (item.methods || []).forEach(m => parts.push(m.name || ''));
+    (item.properties || []).forEach(p => parts.push(p.name || ''));
+  } else if (type === 'dut') {
+    parts.push(item.dutType || '', item.baseType || '');
+    (item.enumValues || []).forEach(v => parts.push(v.name || '', v.comment || ''));
+    (item.members || []).forEach(m => parts.push(m.name || '', m.dataType || ''));
+  } else if (type === 'gvl') {
+    (item.variables || []).forEach(v => parts.push(v.name || '', v.dataType || '', v.atBinding || ''));
+  }
+  return parts.join(' ').toLowerCase();
+}
+
+function getPouIcon(pouType) {
+  const t = (pouType || '').toLowerCase();
+  if (t.includes('function_block') || t.includes('functionblock') || t === 'fb') return '\uD83D\uDCE6';
+  if (t.includes('function') || t === 'fn') return '\u0192';
+  if (t.includes('program') || t === 'prg') return '\u25B6';
+  if (t.includes('interface') || t === 'itf') return '\uD83D\uDD17';
+  return '\uD83D\uDCE6';
+}
+
+function makePouBadge(pouType) {
+  const t = (pouType || '').toLowerCase();
+  let cls = 'pou-fb', label = pouType || 'FB';
+  if (t.includes('function_block') || t.includes('functionblock') || t === 'fb') { cls = 'pou-fb'; label = 'FB'; }
+  else if (t.includes('function') || t === 'fn') { cls = 'pou-fn'; label = 'FN'; }
+  else if (t.includes('program') || t === 'prg') { cls = 'pou-prg'; label = 'PRG'; }
+  else if (t.includes('interface') || t === 'itf') { cls = 'pou-itf'; label = 'ITF'; }
+  return el('span', { className: 'pou-badge ' + cls }, label);
+}
+
+function getDutIcon(dutType) {
+  const t = (dutType || '').toLowerCase();
+  if (t === 'enum') return '\uD83D\uDD22';
+  if (t === 'struct') return '\uD83D\uDCCB';
+  if (t === 'union') return '\u222A';
+  return '\uD83D\uDD16';
+}
+
+function makeDutBadge(dutType) {
+  const t = (dutType || '').toLowerCase();
+  let cls = 'dut-struct', label = dutType || 'TYPE';
+  if (t === 'enum') { cls = 'dut-enum'; label = 'ENUM'; }
+  else if (t === 'struct') { cls = 'dut-struct'; label = 'STRUCT'; }
+  else if (t === 'union') { cls = 'dut-union'; label = 'UNION'; }
+  else if (t === 'alias') { cls = 'dut-alias'; label = 'ALIAS'; }
+  return el('span', { className: 'dut-badge ' + cls }, label);
+}
+
+function scopeBadge(scope) {
+  const s = (scope || 'VAR').toUpperCase().replace('VAR_', '');
+  const cls = {
+    'INPUT': 'scope-input', 'OUTPUT': 'scope-output', 'IN_OUT': 'scope-inout', 'INOUT': 'scope-inout',
+    'LOCAL': 'scope-local', 'VAR': 'scope-var', 'TEMP': 'scope-temp', 'STAT': 'scope-stat',
+    'CONSTANT': 'scope-constant', 'GLOBAL': 'scope-var'
+  }[s] || 'scope-var';
+  return '<span class="scope-badge ' + cls + '">' + s + '</span>';
+}
+
+function visBadge(vis) {
+  const v = (vis || 'PUBLIC').toUpperCase();
+  const cls = { 'PUBLIC': 'vis-public', 'PROTECTED': 'vis-protected', 'PRIVATE': 'vis-private', 'INTERNAL': 'vis-internal' }[v] || 'vis-public';
+  return '<span class="vis-badge ' + cls + '">' + v + '</span>';
 }
 
 // ── Tree rendering ──
@@ -469,7 +870,6 @@ function buildTree(nodes, container, depth) {
     const wrap = el('div', { className: 'tree-node' + (depth === 0 ? ' root' : '') });
     wrap.dataset.nodeId = nodeId;
 
-    // Module row
     const row = el('div', { className: 'node-row', 'data-searchable': [node.instanceName, node.typeName, node.fullPath, node.displayName].join(' ').toLowerCase() });
     row.dataset.nodeId = nodeId;
     row.dataset.nodeType = 'module';
@@ -492,7 +892,6 @@ function buildTree(nodes, container, depth) {
       row.appendChild(el('span', { className: 'io-badge' }, 'IO'));
     }
 
-    // Click to select/toggle
     row.addEventListener('click', (e) => {
       if (e.target === toggle || e.target.closest('.toggle')) {
         toggleNode(nodeId, wrap, toggle);
@@ -505,11 +904,9 @@ function buildTree(nodes, container, depth) {
     wrap.appendChild(row);
     allNodeRows.push({ el: row, node, depth });
 
-    // Children container
     const childWrap = el('div', { style: { display: isExpanded ? 'block' : 'none' } });
     childWrap.dataset.childrenOf = nodeId;
 
-    // Alarm children
     if (node.alarms && node.alarms.length > 0) {
       for (const alarm of node.alarms) {
         const sev = getSeverity(alarm);
@@ -532,7 +929,6 @@ function buildTree(nodes, container, depth) {
 
         aRow.appendChild(el('span', { className: 'alarm-path' }, alarm.variablePath || ''));
 
-        // Tooltip events
         aRow.addEventListener('mouseenter', (e) => showTooltip(e, alarm));
         aRow.addEventListener('mousemove', moveTooltip);
         aRow.addEventListener('mouseleave', hideTooltip);
@@ -542,7 +938,6 @@ function buildTree(nodes, container, depth) {
       }
     }
 
-    // Recurse children
     if (node.children && node.children.length > 0) {
       buildTree(node.children, childWrap, depth + 1);
     }
@@ -593,12 +988,22 @@ function expandParents(element) {
 // ── Selection & Detail ──
 function selectNode(node, rowEl) {
   document.querySelectorAll('.node-row.selected').forEach(r => r.classList.remove('selected'));
+  document.querySelectorAll('.flat-item.selected').forEach(r => r.classList.remove('selected'));
   rowEl.classList.add('selected');
   selectedNode = node;
-  showDetail(node);
+  currentDetailType = 'tree';
+
+  // Find matching POU data
+  selectedPou = findPouForNode(node);
+  showTreeDetail(node);
 }
 
-function showDetail(node) {
+function findPouForNode(node) {
+  const typeName = (node.typeName || '').toLowerCase();
+  return pouMap[typeName] || null;
+}
+
+function showTreeDetail(node) {
   const panel = document.getElementById('detail');
   panel.classList.add('visible');
   document.getElementById('d-name').textContent = node.displayName || node.instanceName;
@@ -607,153 +1012,669 @@ function showDetail(node) {
   document.getElementById('d-type').innerHTML = esc(typeHtml) + layerBadge;
   document.getElementById('d-extends').textContent = node.extendsChain || '';
 
-  // Reset tabs
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.tab-btn[data-tab="alarms"]').classList.add('active');
-  renderDetailTab('alarms', node);
+  // Configure tabs
+  const pou = selectedPou;
+  configureTabs({
+    overview: true,
+    variables: !!(pou && ((pou.variables || []).length > 0 || (pou.allVariables || []).length > 0)),
+    methods: !!(pou && (pou.methods || []).length > 0),
+    properties: !!(pou && (pou.properties || []).length > 0),
+    alarms: true,
+    statemachines: true,
+    io: true
+  });
+
+  const firstTab = pou ? 'overview' : 'alarms';
+  activateTab(firstTab);
+  renderCurrentTab();
 }
 
-function renderDetailTab(tab, node) {
+function showPouDetail(pou) {
+  selectedPou = pou;
+  selectedNode = null;
+  selectedDut = null;
+  selectedGvl = null;
+  currentDetailType = 'pou';
+
+  document.querySelectorAll('.flat-item.selected').forEach(r => r.classList.remove('selected'));
+  // Find and select the matching flat item
+  allFlatItems.forEach(fi => {
+    if (fi.type === 'pou' && fi.item === pou) fi.el.classList.add('selected');
+  });
+
+  const panel = document.getElementById('detail');
+  panel.classList.add('visible');
+  document.getElementById('d-name').textContent = pou.name;
+  const pouBadge = '<span class="pou-badge pou-' + (((pou.pouType||'fb').toLowerCase().includes('function_block')||pou.pouType==='FB') ? 'fb' : (pou.pouType||'fb').substring(0,2).toLowerCase()) + '">' + esc(pou.pouType || 'FB') + '</span>';
+  document.getElementById('d-type').innerHTML = pouBadge + (pou.isAbstract ? ' <span style="color:var(--muted)">ABSTRACT</span>' : '');
+  document.getElementById('d-extends').textContent = pou.extendsType ? 'EXTENDS ' + pou.extendsType : '';
+
+  configureTabs({
+    overview: true,
+    variables: (pou.variables || []).length > 0 || (pou.allVariables || []).length > 0,
+    methods: (pou.methods || []).length > 0,
+    properties: (pou.properties || []).length > 0,
+    alarms: false,
+    statemachines: false,
+    io: false
+  });
+
+  activateTab('overview');
+  renderCurrentTab();
+}
+
+function showDutDetail(dut) {
+  selectedDut = dut;
+  selectedPou = null;
+  selectedNode = null;
+  selectedGvl = null;
+  currentDetailType = 'dut';
+
+  document.querySelectorAll('.flat-item.selected').forEach(r => r.classList.remove('selected'));
+  allFlatItems.forEach(fi => {
+    if (fi.type === 'dut' && fi.item === dut) fi.el.classList.add('selected');
+  });
+
+  const panel = document.getElementById('detail');
+  panel.classList.add('visible');
+  document.getElementById('d-name').textContent = dut.name;
+  document.getElementById('d-type').innerHTML = makeDutBadge(dut.dutType).outerHTML + (dut.baseType ? ' <span style="color:var(--muted)">: ' + esc(dut.baseType) + '</span>' : '');
+  document.getElementById('d-extends').textContent = (dut.attributes || []).join(', ');
+
+  // For DUT, we show a single content — no tabs needed, but use overview tab
+  configureTabs({ overview: true, variables: false, methods: false, properties: false, alarms: false, statemachines: false, io: false });
+  activateTab('overview');
+  renderCurrentTab();
+}
+
+function showGvlDetail(gvl) {
+  selectedGvl = gvl;
+  selectedPou = null;
+  selectedNode = null;
+  selectedDut = null;
+  currentDetailType = 'gvl';
+
+  document.querySelectorAll('.flat-item.selected').forEach(r => r.classList.remove('selected'));
+  allFlatItems.forEach(fi => {
+    if (fi.type === 'gvl' && fi.item === gvl) fi.el.classList.add('selected');
+  });
+
+  const panel = document.getElementById('detail');
+  panel.classList.add('visible');
+  document.getElementById('d-name').textContent = gvl.name;
+  document.getElementById('d-type').innerHTML = '<span class="pou-badge pou-prg">GVL</span>' + (gvl.qualifiedOnly ? ' <span style="color:var(--muted)">{qualified_only}</span>' : '');
+  document.getElementById('d-extends').textContent = '';
+
+  configureTabs({ overview: true, variables: false, methods: false, properties: false, alarms: false, statemachines: false, io: false });
+  activateTab('overview');
+  renderCurrentTab();
+}
+
+function configureTabs(config) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const tab = btn.dataset.tab;
+    if (config[tab] === false) {
+      btn.classList.add('disabled');
+      btn.style.display = 'none';
+    } else {
+      btn.classList.remove('disabled');
+      btn.style.display = '';
+    }
+  });
+}
+
+function activateTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
+  if (btn && !btn.classList.contains('disabled')) btn.classList.add('active');
+}
+
+function getActiveTab() {
+  const active = document.querySelector('.tab-btn.active');
+  return active ? active.dataset.tab : 'overview';
+}
+
+function renderCurrentTab() {
+  const tab = getActiveTab();
   const body = document.getElementById('detail-body');
   body.innerHTML = '';
 
-  if (tab === 'alarms') {
-    const alarms = node.alarms || [];
-    if (alarms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No alarms on this module.</p>'; return; }
+  if (currentDetailType === 'dut') {
+    renderDutContent(body, selectedDut);
+    attachXrefHandlers(body);
+    return;
+  }
+  if (currentDetailType === 'gvl') {
+    renderGvlContent(body, selectedGvl);
+    attachXrefHandlers(body);
+    return;
+  }
+
+  if (tab === 'overview') {
+    renderOverviewTab(body);
+  } else if (tab === 'variables') {
+    renderVariablesTab(body);
+  } else if (tab === 'methods') {
+    renderMethodsTab(body);
+  } else if (tab === 'properties') {
+    renderPropertiesTab(body);
+  } else if (tab === 'alarms') {
+    renderAlarmsTab(body);
+  } else if (tab === 'statemachines') {
+    renderStateMachinesTab(body);
+  } else if (tab === 'io') {
+    renderIoTab(body);
+  }
+  attachXrefHandlers(body);
+}
+
+// ── Detail Tab Renderers ──
+function renderOverviewTab(body) {
+  const pou = selectedPou;
+  const node = selectedNode;
+
+  if (pou) {
+    const grid = el('div', { className: 'info-grid' });
+    grid.innerHTML =
+      '<div class="label">POU Type</div><div class="value">' + esc(pou.pouType || 'Unknown') + (pou.isAbstract ? ' (ABSTRACT)' : '') + '</div>' +
+      (pou.extendsType ? '<div class="label">Extends</div><div class="value">' + makeTypeLink(pou.extendsType) + '</div>' : '') +
+      (pou.implementsList && pou.implementsList.length > 0 ? '<div class="label">Implements</div><div class="value">' + pou.implementsList.map(i => makeTypeLink(i)).join(', ') + '</div>' : '') +
+      (pou.inheritanceChain && pou.inheritanceChain.length > 0 ? '<div class="label">Inheritance</div><div class="value"><span class="mono">' + pou.inheritanceChain.map(i => makeTypeLink(i)).join(' &rarr; ') + '</span></div>' : '') +
+      '<div class="label">Variables</div><div class="value">' + (pou.variables || []).length + ' own' + ((pou.allVariables || []).length > (pou.variables || []).length ? ' (' + (pou.allVariables || []).length + ' with inherited)' : '') + '</div>' +
+      '<div class="label">Methods</div><div class="value">' + (pou.methods || []).length + '</div>' +
+      '<div class="label">Properties</div><div class="value">' + (pou.properties || []).length + '</div>';
+    body.appendChild(grid);
+  }
+
+  if (node) {
+    const grid = el('div', { className: 'info-grid' });
+    let html = '<div class="label">Instance</div><div class="value">' + esc(node.instanceName || node.displayName) + '</div>';
+    html += '<div class="label">Type</div><div class="value">' + makeTypeLink(node.typeName) + '</div>';
+    if (node.layer) html += '<div class="label">Layer</div><div class="value"><span class="layer-badge ' + layerBadgeClass(node.layer) + '">' + esc(node.layer) + '</span></div>';
+    if (node.fullPath) html += '<div class="label">Path</div><div class="value"><span class="mono">' + esc(node.fullPath) + '</span></div>';
+    if (node.extendsChain) html += '<div class="label">Inheritance</div><div class="value"><span class="mono">' + esc(node.extendsChain) + '</span></div>';
+    html += '<div class="label">Alarms</div><div class="value">' + countAlarms(node) + '</div>';
+    html += '<div class="label">State Machines</div><div class="value">' + (node.stateMachines || []).length + '</div>';
+    html += '<div class="label">IO Mappings</div><div class="value">' + (node.ioMappings || []).length + '</div>';
+    grid.innerHTML = html;
+    body.appendChild(grid);
+  }
+
+  if (!pou && !node) {
+    body.innerHTML = '<p style="color:var(--muted);padding:20px;">No overview data available.</p>';
+  }
+}
+
+function renderVariablesTab(body) {
+  const pou = selectedPou;
+  if (!pou) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No variable data available.</p>'; return; }
+
+  // Search + include inherited toggle
+  const controls = el('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' } });
+  const searchInput = el('input', { type: 'text', className: 'var-search', placeholder: 'Filter variables...' });
+  const inheritedLabel = el('label', { className: 'cb' });
+  const inheritedCb = el('input', { type: 'checkbox' });
+  inheritedLabel.appendChild(inheritedCb);
+  inheritedLabel.appendChild(document.createTextNode(' Include inherited'));
+  controls.appendChild(searchInput);
+  controls.appendChild(inheritedLabel);
+  body.appendChild(controls);
+
+  const tableWrap = el('div');
+  body.appendChild(tableWrap);
+
+  function renderVarTable() {
+    tableWrap.innerHTML = '';
+    const vars = inheritedCb.checked ? (pou.allVariables || pou.variables || []) : (pou.variables || []);
+    const query = searchInput.value.toLowerCase().trim();
+    const filtered = vars.filter(v => {
+      if (!query) return true;
+      return (v.name || '').toLowerCase().includes(query) ||
+             (v.dataType || '').toLowerCase().includes(query) ||
+             (v.scope || '').toLowerCase().includes(query) ||
+             (v.comment || '').toLowerCase().includes(query);
+    });
+
+    if (filtered.length === 0) {
+      tableWrap.innerHTML = '<p style="color:var(--muted);padding:10px;">No variables match.</p>';
+      return;
+    }
+
+    // Group by scope
+    const groups = {};
+    const scopeOrder = ['VAR_INPUT','Input','VAR_OUTPUT','Output','VAR_IN_OUT','InOut','VAR','Local','VAR_TEMP','Temp','VAR_STAT','Stat','VAR_INST','Inst','Constant'];
+    for (const v of filtered) {
+      const scope = v.scope || 'VAR';
+      if (!groups[scope]) groups[scope] = [];
+      groups[scope].push(v);
+    }
+
+    // Sort groups by order
+    const sortedScopes = Object.keys(groups).sort((a, b) => {
+      const ai = scopeOrder.findIndex(s => a.toLowerCase().includes(s.toLowerCase()));
+      const bi = scopeOrder.findIndex(s => b.toLowerCase().includes(s.toLowerCase()));
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+
+    for (const scope of sortedScopes) {
+      const header = el('div', { className: 'scope-group-header' }, scope + ' (' + groups[scope].length + ')');
+      tableWrap.appendChild(header);
+
+      const table = el('table', { className: 'detail-table' });
+      const thead = el('thead');
+      thead.innerHTML = '<tr><th>Name</th><th>Type</th><th>Initial</th><th>Comment</th></tr>';
+      table.appendChild(thead);
+      const tbody = el('tbody');
+      for (const v of groups[scope]) {
+        const tr = el('tr');
+        let nameHtml = esc(v.name || '');
+        if (v.isReference) nameHtml = 'REF ' + nameHtml;
+        if (v.isPointer) nameHtml = 'PTR ' + nameHtml;
+        if (v.isArray) nameHtml += '<span style="color:var(--muted)"> [' + esc(v.arrayBounds || '') + ']</span>';
+        if (v.atBinding) nameHtml += ' <span class="at-binding">AT ' + esc(v.atBinding) + '</span>';
+
+        tr.innerHTML =
+          '<td>' + nameHtml + '</td>' +
+          '<td class="mono">' + makeTypeLink(v.dataType) + (v.constructorArgs ? '<span style="color:var(--muted)">(' + esc(v.constructorArgs) + ')</span>' : '') + '</td>' +
+          '<td class="mono" style="color:var(--muted)">' + esc(v.initialValue || '') + '</td>' +
+          '<td style="color:var(--muted);font-style:italic">' + esc(v.comment || '') + '</td>';
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+    }
+  }
+
+  renderVarTable();
+  searchInput.addEventListener('input', debounce(renderVarTable, 150));
+  inheritedCb.addEventListener('change', renderVarTable);
+}
+
+function renderMethodsTab(body) {
+  const pou = selectedPou;
+  if (!pou || (pou.methods || []).length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No methods on this POU.</p>'; return; }
+
+  for (const m of pou.methods) {
+    const card = el('div', { className: 'expand-card' });
+    const header = el('div', { className: 'expand-header' });
+    const toggleSpan = el('span', { className: 'expand-toggle' }, '\u25B6');
+    header.appendChild(toggleSpan);
+    header.innerHTML += visBadge(m.visibility);
+    header.appendChild(el('span', { className: 'method-name' }, ' ' + (m.name || 'Unknown')));
+    if (m.returnType) header.appendChild(el('span', { className: 'method-ret' }, ' : ' + m.returnType));
+    if (m.parameters && m.parameters.length > 0) {
+      const paramStr = m.parameters.map(p => (p.name || '') + ': ' + (p.dataType || '')).join(', ');
+      header.appendChild(el('span', { className: 'method-params' }, '(' + paramStr + ')'));
+    }
+    if (m.folderPath) {
+      header.appendChild(el('span', { style: { color: 'var(--muted)', fontSize: '10px', marginLeft: 'auto' } }, m.folderPath));
+    }
+    card.appendChild(header);
+
+    const bodyDiv = el('div', { className: 'expand-body' });
+
+    // Parameters table
+    if (m.parameters && m.parameters.length > 0) {
+      const ptitle = el('div', { style: { fontSize: '11px', fontWeight: '600', color: 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase' } }, 'Parameters');
+      bodyDiv.appendChild(ptitle);
+      const ptable = el('table', { className: 'detail-table' });
+      ptable.innerHTML = '<thead><tr><th>Name</th><th>Type</th><th>Scope</th></tr></thead>';
+      const ptbody = el('tbody');
+      for (const p of m.parameters) {
+        const ptr = el('tr');
+        ptr.innerHTML = '<td>' + esc(p.name || '') + '</td><td class="mono">' + makeTypeLink(p.dataType) + '</td><td>' + scopeBadge(p.scope) + '</td>';
+        ptbody.appendChild(ptr);
+      }
+      ptable.appendChild(ptbody);
+      bodyDiv.appendChild(ptable);
+    }
+
+    // Local variables
+    if (m.localVars && m.localVars.length > 0) {
+      const ltitle = el('div', { style: { fontSize: '11px', fontWeight: '600', color: 'var(--muted)', marginBottom: '4px', marginTop: '8px', textTransform: 'uppercase' } }, 'Local Variables');
+      bodyDiv.appendChild(ltitle);
+      const ltable = el('table', { className: 'detail-table' });
+      ltable.innerHTML = '<thead><tr><th>Name</th><th>Type</th><th>Initial</th></tr></thead>';
+      const ltbody = el('tbody');
+      for (const lv of m.localVars) {
+        const ltr = el('tr');
+        ltr.innerHTML = '<td>' + esc(lv.name || '') + '</td><td class="mono">' + makeTypeLink(lv.dataType) + '</td><td class="mono" style="color:var(--muted)">' + esc(lv.initialValue || '') + '</td>';
+        ltbody.appendChild(ltr);
+      }
+      ltable.appendChild(ltbody);
+      bodyDiv.appendChild(ltable);
+    }
+
+    // Code body
+    if (m.body) {
+      const codeTitle = el('div', { style: { fontSize: '11px', fontWeight: '600', color: 'var(--muted)', marginBottom: '4px', marginTop: '8px', textTransform: 'uppercase' } }, 'Code');
+      bodyDiv.appendChild(codeTitle);
+      const codeBlock = el('div', { className: 'code-block' });
+      codeBlock.innerHTML = highlightST(m.body);
+      bodyDiv.appendChild(codeBlock);
+    }
+
+    card.appendChild(bodyDiv);
+
+    header.addEventListener('click', () => {
+      const isOpen = bodyDiv.classList.contains('open');
+      bodyDiv.classList.toggle('open');
+      toggleSpan.textContent = isOpen ? '\u25B6' : '\u25BC';
+    });
+
+    body.appendChild(card);
+  }
+}
+
+function renderPropertiesTab(body) {
+  const pou = selectedPou;
+  if (!pou || (pou.properties || []).length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No properties on this POU.</p>'; return; }
+
+  for (const p of pou.properties) {
+    const card = el('div', { className: 'expand-card' });
+    const header = el('div', { className: 'expand-header' });
+    const toggleSpan = el('span', { className: 'expand-toggle' }, '\u25B6');
+    header.appendChild(toggleSpan);
+    header.appendChild(el('span', { className: 'method-name' }, ' ' + (p.name || 'Unknown')));
+    if (p.dataType) header.appendChild(el('span', { className: 'method-ret' }, ' : ' + p.dataType));
+    if (p.hasGetter) header.innerHTML += '<span class="prop-getter">GET</span>';
+    if (p.hasSetter) header.innerHTML += '<span class="prop-setter">SET</span>';
+    card.appendChild(header);
+
+    const bodyDiv = el('div', { className: 'expand-body' });
+
+    if (p.getBody) {
+      const getTitle = el('div', { style: { fontSize: '11px', fontWeight: '600', color: 'var(--vis-public)', marginBottom: '4px', textTransform: 'uppercase' } }, 'GET');
+      bodyDiv.appendChild(getTitle);
+      const getCode = el('div', { className: 'code-block' });
+      getCode.innerHTML = highlightST(p.getBody);
+      bodyDiv.appendChild(getCode);
+    }
+
+    if (p.setBody) {
+      const setTitle = el('div', { style: { fontSize: '11px', fontWeight: '600', color: 'var(--vis-protected)', marginBottom: '4px', marginTop: '8px', textTransform: 'uppercase' } }, 'SET');
+      bodyDiv.appendChild(setTitle);
+      const setCode = el('div', { className: 'code-block' });
+      setCode.innerHTML = highlightST(p.setBody);
+      bodyDiv.appendChild(setCode);
+    }
+
+    card.appendChild(bodyDiv);
+
+    header.addEventListener('click', () => {
+      const isOpen = bodyDiv.classList.contains('open');
+      bodyDiv.classList.toggle('open');
+      toggleSpan.textContent = isOpen ? '\u25B6' : '\u25BC';
+    });
+
+    body.appendChild(card);
+  }
+}
+
+function renderAlarmsTab(body) {
+  const node = selectedNode;
+  if (!node) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">Select a tree node to view alarms.</p>'; return; }
+  const alarms = node.alarms || [];
+  if (alarms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No alarms on this module.</p>'; return; }
+  const table = el('table', { className: 'detail-table' });
+  const thead = el('thead');
+  thead.innerHTML = '<tr><th>Name</th><th>Severity</th><th>Condition</th><th>Trigger</th><th>Delay</th><th>Reason</th></tr>';
+  table.appendChild(thead);
+  const tbody = el('tbody');
+  for (const a of alarms) {
+    const sev = getSeverity(a);
+    const tr = el('tr');
+    tr.innerHTML =
+      '<td>' + esc(a.instanceName) + '</td>' +
+      '<td><span class="sev-badge ' + sevClass(sev) + '">' + esc(sev) + '</span></td>' +
+      '<td>' + esc(a.condition || '') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted)">' + esc(a.triggerCondition || '') + '</td>' +
+      '<td>' + esc(a.triggerDelayMs ? (a.triggerDelayMs + 'ms') : '') + '</td>' +
+      '<td>' + (isUnresolved(a) ? '<span class="reason-tag ' + reasonTagClass(a.unresolvedReason) + '">' + reasonLabel(a.unresolvedReason) + '</span>' : '<span style="color:var(--information)">OK</span>') + '</td>';
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  body.appendChild(table);
+}
+
+function renderStateMachinesTab(body) {
+  const node = selectedNode;
+  if (!node) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">Select a tree node to view state machines.</p>'; return; }
+  const sms = node.stateMachines || [];
+  if (sms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No state machines on this module.</p>'; return; }
+  for (const sm of sms) {
+    const card = el('div', { className: 'sm-card' });
+    const header = el('div', { className: 'sm-card-header' }, (sm.displayName || sm.instanceName) + ' (' + (sm.enumTypeName || '') + ')');
+    card.appendChild(header);
+    const cardBody = el('div', { className: 'sm-card-body' });
+
+    const svgWrap = el('div', { className: 'sm-svg-wrap' });
+    svgWrap.innerHTML = renderStateMachineSVG(sm);
+    const svgEl = svgWrap.querySelector('svg');
+    let smZoom = 1;
+    if (svgEl) {
+      const controls = el('div', { className: 'sm-zoom-controls' });
+      const btnZoomIn = el('button', { className: 'sm-zoom-btn', title: 'Zoom in' }, '+');
+      const btnZoomOut = el('button', { className: 'sm-zoom-btn', title: 'Zoom out' }, '\u2212');
+      const btnFit = el('button', { className: 'sm-zoom-btn', title: 'Fit to width' }, '\u2922');
+      controls.appendChild(btnZoomIn);
+      controls.appendChild(btnZoomOut);
+      controls.appendChild(btnFit);
+      svgWrap.appendChild(controls);
+
+      function applySmZoom() {
+        svgEl.style.width = (smZoom * 100) + '%';
+        svgEl.style.height = 'auto';
+        svgWrap.style.overflow = 'auto';
+      }
+      btnZoomIn.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.min(3, smZoom + 0.25); applySmZoom(); });
+      btnZoomOut.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.max(0.25, smZoom - 0.25); applySmZoom(); });
+      btnFit.addEventListener('click', function(e) { e.stopPropagation(); smZoom = 1; applySmZoom(); });
+
+      svgWrap.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          smZoom = Math.max(0.25, Math.min(3, smZoom + (e.deltaY < 0 ? 0.15 : -0.15)));
+          applySmZoom();
+        }
+      }, { passive: false });
+    }
+    cardBody.appendChild(svgWrap);
+
+    const codeEl = el('pre', { className: 'sm-code' });
+    codeEl.id = 'sm-code-' + (sm.instanceName || Math.random().toString(36).slice(2));
+    cardBody.appendChild(codeEl);
+
+    card.appendChild(cardBody);
+    body.appendChild(card);
+
+    svgWrap.querySelectorAll('[data-state-index]').forEach(rect => {
+      rect.style.cursor = 'pointer';
+      rect.addEventListener('click', () => {
+        const idx = parseInt(rect.dataset.stateIndex);
+        const state = (sm.states || [])[idx];
+        if (state) {
+          const visible = codeEl.classList.contains('visible') && codeEl.dataset.activeIdx === String(idx);
+          if (visible) {
+            codeEl.classList.remove('visible');
+          } else {
+            codeEl.innerHTML = '<span class="cmt">// State: ' + esc(state.name || '') + ' (Method: ' + esc(state.methodName || '') + ')</span>\n\n' + highlightST(state.codeBody || '// No code body available');
+            codeEl.dataset.activeIdx = String(idx);
+            codeEl.classList.add('visible');
+          }
+        }
+      });
+    });
+  }
+}
+
+function renderIoTab(body) {
+  const node = selectedNode;
+  if (!node) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">Select a tree node to view IO.</p>'; return; }
+  const ios = node.ioMappings || [];
+  if (ios.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No IO mappings on this module.</p>'; return; }
+  const table = el('table', { className: 'detail-table' });
+  const thead = el('thead');
+  thead.innerHTML = '<tr><th>Variable</th><th>Type</th><th>AT Address</th><th>Direction</th></tr>';
+  table.appendChild(thead);
+  const tbody = el('tbody');
+  for (const io of ios) {
+    const tr = el('tr');
+    tr.innerHTML =
+      '<td>' + esc(io.variable || io.variableName || '') + '</td>' +
+      '<td class="mono">' + esc(io.type || io.dataType || '') + '</td>' +
+      '<td class="mono at-binding">' + esc(io.atAddress || io.address || '') + '</td>' +
+      '<td>' + esc(io.direction || '') + '</td>';
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  body.appendChild(table);
+}
+
+// ── DUT Content Renderer ──
+function renderDutContent(body, dut) {
+  if (!dut) return;
+
+  const grid = el('div', { className: 'info-grid' });
+  let html = '<div class="label">DUT Type</div><div class="value">' + esc(dut.dutType || 'Unknown') + '</div>';
+  if (dut.baseType) html += '<div class="label">Base Type</div><div class="value">' + makeTypeLink(dut.baseType) + '</div>';
+  if (dut.attributes && dut.attributes.length > 0) html += '<div class="label">Attributes</div><div class="value">' + esc(dut.attributes.join(', ')) + '</div>';
+  grid.innerHTML = html;
+  body.appendChild(grid);
+
+  const dutType = (dut.dutType || '').toLowerCase();
+
+  if (dutType === 'enum' && dut.enumValues && dut.enumValues.length > 0) {
     const table = el('table', { className: 'detail-table' });
-    const thead = el('thead');
-    thead.innerHTML = '<tr><th>Name</th><th>Severity</th><th>Condition</th><th>Trigger</th><th>Delay</th><th>Reason</th></tr>';
-    table.appendChild(thead);
+    table.innerHTML = '<thead><tr><th>Name</th><th>Value</th><th>Comment</th></tr></thead>';
     const tbody = el('tbody');
-    for (const a of alarms) {
-      const sev = getSeverity(a);
+    for (const ev of dut.enumValues) {
       const tr = el('tr');
       tr.innerHTML =
-        '<td>' + esc(a.instanceName) + '</td>' +
-        '<td><span class="sev-badge ' + sevClass(sev) + '">' + esc(sev) + '</span></td>' +
-        '<td>' + esc(a.condition || '') + '</td>' +
-        '<td style="font-size:11px;color:var(--muted)">' + esc(a.triggerCondition || '') + '</td>' +
-        '<td>' + esc(a.triggerDelayMs ? (a.triggerDelayMs + 'ms') : '') + '</td>' +
-        '<td>' + (isUnresolved(a) ? '<span class="reason-tag ' + reasonTagClass(a.unresolvedReason) + '">' + reasonLabel(a.unresolvedReason) + '</span>' : '<span style="color:var(--information)">OK</span>') + '</td>';
+        '<td><strong>' + esc(ev.name || '') + '</strong></td>' +
+        '<td class="mono">' + esc(ev.value != null ? String(ev.value) : '') + '</td>' +
+        '<td style="color:var(--muted);font-style:italic">' + esc(ev.comment || '') + '</td>';
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
     body.appendChild(table);
-
-  } else if (tab === 'statemachines') {
-    const sms = node.stateMachines || [];
-    if (sms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No state machines on this module.</p>'; return; }
-    for (const sm of sms) {
-      const card = el('div', { className: 'sm-card' });
-      const header = el('div', { className: 'sm-card-header' }, (sm.displayName || sm.instanceName) + ' (' + (sm.enumTypeName || '') + ')');
-      card.appendChild(header);
-      const cardBody = el('div', { className: 'sm-card-body' });
-
-      // SVG with zoom controls
-      const svgWrap = el('div', { className: 'sm-svg-wrap' });
-      svgWrap.innerHTML = renderStateMachineSVG(sm);
-      const svgEl = svgWrap.querySelector('svg');
-      let smZoom = 1;
-      if (svgEl) {
-        const vb = svgEl.getAttribute('viewBox');
-        // Add zoom controls
-        const controls = el('div', { className: 'sm-zoom-controls' });
-        const btnZoomIn = el('button', { className: 'sm-zoom-btn', title: 'Zoom in' }, '+');
-        const btnZoomOut = el('button', { className: 'sm-zoom-btn', title: 'Zoom out' }, '\u2212');
-        const btnFit = el('button', { className: 'sm-zoom-btn', title: 'Fit to width' }, '\u2922');
-        controls.appendChild(btnZoomIn);
-        controls.appendChild(btnZoomOut);
-        controls.appendChild(btnFit);
-        svgWrap.appendChild(controls);
-
-        function applySmZoom() {
-          svgEl.style.width = (smZoom * 100) + '%';
-          svgEl.style.height = 'auto';
-          svgWrap.style.overflow = 'auto';
-        }
-        btnZoomIn.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.min(3, smZoom + 0.25); applySmZoom(); });
-        btnZoomOut.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.max(0.25, smZoom - 0.25); applySmZoom(); });
-        btnFit.addEventListener('click', function(e) { e.stopPropagation(); smZoom = 1; applySmZoom(); });
-
-        // Mouse wheel zoom
-        svgWrap.addEventListener('wheel', function(e) {
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            smZoom = Math.max(0.25, Math.min(3, smZoom + (e.deltaY < 0 ? 0.15 : -0.15)));
-            applySmZoom();
-          }
-        }, { passive: false });
-      }
-      cardBody.appendChild(svgWrap);
-
-      // Code display area
-      const codeEl = el('pre', { className: 'sm-code' });
-      codeEl.id = 'sm-code-' + (sm.instanceName || Math.random().toString(36).slice(2));
-      cardBody.appendChild(codeEl);
-
-      card.appendChild(cardBody);
-      body.appendChild(card);
-
-      // Attach click handlers to state rects
-      svgWrap.querySelectorAll('[data-state-index]').forEach(rect => {
-        rect.style.cursor = 'pointer';
-        rect.addEventListener('click', () => {
-          const idx = parseInt(rect.dataset.stateIndex);
-          const state = (sm.states || [])[idx];
-          if (state) {
-            const visible = codeEl.classList.contains('visible') && codeEl.dataset.activeIdx === String(idx);
-            if (visible) {
-              codeEl.classList.remove('visible');
-            } else {
-              codeEl.textContent = '// State: ' + (state.name || '') + ' (Method: ' + (state.methodName || '') + ')\n\n' + (state.codeBody || '// No code body available');
-              codeEl.dataset.activeIdx = String(idx);
-              codeEl.classList.add('visible');
-            }
-          }
-        });
-      });
-    }
-
-  } else if (tab === 'io') {
-    const ios = node.ioMappings || [];
-    if (ios.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No IO mappings on this module.</p>'; return; }
+  } else if ((dutType === 'struct' || dutType === 'union') && dut.members && dut.members.length > 0) {
     const table = el('table', { className: 'detail-table' });
-    const thead = el('thead');
-    thead.innerHTML = '<tr><th>Variable</th><th>Type</th><th>AT Address</th><th>Direction</th></tr>';
-    table.appendChild(thead);
+    table.innerHTML = '<thead><tr><th>Name</th><th>Type</th><th>Initial Value</th><th>Comment</th></tr></thead>';
     const tbody = el('tbody');
-    for (const io of ios) {
+    for (const m of dut.members) {
       const tr = el('tr');
       tr.innerHTML =
-        '<td>' + esc(io.variable || io.variableName || '') + '</td>' +
-        '<td>' + esc(io.type || io.dataType || '') + '</td>' +
-        '<td style="font-family:monospace;color:var(--accent)">' + esc(io.atAddress || io.address || '') + '</td>' +
-        '<td>' + esc(io.direction || '') + '</td>';
+        '<td><strong>' + esc(m.name || '') + '</strong></td>' +
+        '<td class="mono">' + makeTypeLink(m.dataType) + '</td>' +
+        '<td class="mono" style="color:var(--muted)">' + esc(m.initialValue || '') + '</td>' +
+        '<td style="color:var(--muted);font-style:italic">' + esc(m.comment || '') + '</td>';
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
     body.appendChild(table);
   }
+
+  // Cross-reference: find POUs that use this DUT
+  const xrefTitle = el('div', { style: { fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--accent)', padding: '12px 0 4px', borderTop: '1px solid var(--border)', marginTop: '12px' } }, 'Used By');
+  body.appendChild(xrefTitle);
+
+  const dutName = (dut.name || '').toLowerCase();
+  const usedBy = [];
+  (DATA.pous || []).forEach(p => {
+    const allVars = (p.allVariables || p.variables || []);
+    const found = allVars.some(v => (v.dataType || '').toLowerCase() === dutName);
+    if (found) usedBy.push(p);
+  });
+
+  if (usedBy.length === 0) {
+    body.appendChild(el('p', { style: { color: 'var(--muted)', fontSize: '12px' } }, 'No POUs reference this DUT.'));
+  } else {
+    const list = el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } });
+    for (const p of usedBy) {
+      const link = el('span', { className: 'xref', 'data-xref-pou': p.name, style: { padding: '2px 6px', fontSize: '12px' } }, p.name);
+      list.appendChild(link);
+    }
+    body.appendChild(list);
+  }
+}
+
+// ── GVL Content Renderer ──
+function renderGvlContent(body, gvl) {
+  if (!gvl) return;
+
+  const grid = el('div', { className: 'info-grid' });
+  let html = '<div class="label">Qualified Only</div><div class="value">' + (gvl.qualifiedOnly ? 'Yes' : 'No') + '</div>';
+  html += '<div class="label">Variables</div><div class="value">' + (gvl.variables || []).length + '</div>';
+  grid.innerHTML = html;
+  body.appendChild(grid);
+
+  const vars = gvl.variables || [];
+  if (vars.length === 0) {
+    body.appendChild(el('p', { style: { color: 'var(--muted)', padding: '10px' } }, 'No variables in this GVL.'));
+    return;
+  }
+
+  // Search box
+  const searchInput = el('input', { type: 'text', className: 'var-search', placeholder: 'Filter variables...' });
+  body.appendChild(searchInput);
+
+  const tableWrap = el('div');
+  body.appendChild(tableWrap);
+
+  function renderGvlTable() {
+    tableWrap.innerHTML = '';
+    const query = searchInput.value.toLowerCase().trim();
+    const filtered = vars.filter(v => {
+      if (!query) return true;
+      return (v.name || '').toLowerCase().includes(query) ||
+             (v.dataType || '').toLowerCase().includes(query) ||
+             (v.atBinding || '').toLowerCase().includes(query) ||
+             (v.comment || '').toLowerCase().includes(query);
+    });
+
+    if (filtered.length === 0) {
+      tableWrap.innerHTML = '<p style="color:var(--muted);padding:10px;">No variables match.</p>';
+      return;
+    }
+
+    const table = el('table', { className: 'detail-table' });
+    table.innerHTML = '<thead><tr><th>Name</th><th>Type</th><th>Initial Value</th><th>AT Binding</th><th>Comment</th></tr></thead>';
+    const tbody = el('tbody');
+    for (const v of filtered) {
+      const tr = el('tr');
+      tr.innerHTML =
+        '<td><strong>' + esc(v.name || '') + '</strong></td>' +
+        '<td class="mono">' + makeTypeLink(v.dataType) + '</td>' +
+        '<td class="mono" style="color:var(--muted)">' + esc(v.initialValue || '') + '</td>' +
+        '<td class="mono at-binding">' + esc(v.atBinding || '') + '</td>' +
+        '<td style="color:var(--muted);font-style:italic">' + esc(v.comment || '') + '</td>';
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    attachXrefHandlers(tableWrap);
+  }
+
+  renderGvlTable();
+  searchInput.addEventListener('input', debounce(renderGvlTable, 150));
 }
 
 // ── State Machine SVG ──
 function renderStateMachineSVG(sm) {
   const allStates = sm.states || [];
   if (allStates.length === 0) return '<p style="color:var(--muted)">No states defined.</p>';
-  // Filter out ELSE — it's not a real state, just a catch-all branch
   const states = allStates.filter(s => s.name !== 'ELSE');
   if (states.length === 0) return '<p style="color:var(--muted)">No named states found (only ELSE branch).</p>';
   const transitions = sm.transitions || [];
   const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
 
-  // Helper: extract short state name from full enum ref like "E_xxx.StateName"
   function shortName(s) { if (!s) return ''; const d = s.lastIndexOf('.'); return d >= 0 ? s.substring(d + 1) : s; }
 
-  // Build adjacency: forward edges only (from → to by order of appearance or transition)
   const nameToIdx = {};
   states.forEach((s, i) => { nameToIdx[s.name.toLowerCase()] = i; });
 
-  const fwdEdges = []; // {from, to, label}
+  const fwdEdges = [];
   const backEdges = [];
   const edgeSeen = new Set();
 
@@ -771,16 +1692,12 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // Step 1: Add explicit (non-ELSE) transitions
   for (const t of transitions) {
     const fs = shortName(t.fromState), ts = shortName(t.toState);
     if (fs === 'ELSE' || !fs || !ts) continue;
     addEdge(nameToIdx[fs.toLowerCase()], nameToIdx[ts.toLowerCase()], t.timeoutValue);
   }
 
-  // Step 2: Redirect ELSE transitions into method-based sequential chains
-  // In ISA-88 code, CASE handles FirstScan init; ELSE handles ongoing transitions.
-  // ELSE→A, ELSE→B, ELSE→C from same method means A→B→C chain.
   const elseByMethod = {};
   for (const t of transitions) {
     if (shortName(t.fromState) !== 'ELSE') continue;
@@ -794,11 +1711,9 @@ function renderStateMachineSVG(sm) {
 
   for (const method in elseByMethod) {
     const targets = elseByMethod[method];
-    // Chain consecutive targets (parser preserves code order)
     for (let i = 0; i < targets.length - 1; i++) {
       addEdge(targets[i].idx, targets[i + 1].idx, targets[i + 1].timeout);
     }
-    // Find entry state: a state from this method that isn't an ELSE target
     const tgtSet = new Set(targets.map(t => t.idx));
     const entry = states.findIndex((s, i) => s.methodName === method && !tgtSet.has(i));
     if (entry >= 0 && targets.length > 0) {
@@ -806,7 +1721,6 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // Step 3: Chain orphaned states by enum value order
   const hasEdge = new Set();
   fwdEdges.forEach(e => { hasEdge.add(e.from); hasEdge.add(e.to); });
   backEdges.forEach(e => { hasEdge.add(e.from); hasEdge.add(e.to); });
@@ -818,13 +1732,10 @@ function renderStateMachineSVG(sm) {
     for (let i = 0; i < orphans.length - 1; i++) addEdge(orphans[i], orphans[i + 1], '');
   }
 
-  // Assign ranks: BFS shortest-path from initial state, forward edges only
-  // This ensures the initial state is always rank 0 at the top
   const rank = new Array(states.length).fill(-1);
   const initialIdx = states.findIndex(s => s.isInitial);
   const startIdx = initialIdx >= 0 ? initialIdx : 0;
 
-  // Build forward adjacency (ignore cycles by only visiting each node once)
   rank[startIdx] = 0;
   const bfsQueue = [startIdx];
   const bfsVisited = new Set([startIdx]);
@@ -839,8 +1750,6 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // States not reachable via forward edges from initial: try reverse BFS
-  // (they may only be reachable as targets of backward transitions)
   let changed = true;
   while (changed) {
     changed = false;
@@ -856,7 +1765,6 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // Side states: error, timeout, aborted, and anything still unranked
   const sideStates = [];
   states.forEach((s, i) => {
     if (rank[i] < 0) sideStates.push(i);
@@ -864,7 +1772,6 @@ function renderStateMachineSVG(sm) {
 
   const maxRank = Math.max(...rank.filter(r => r >= 0), 0);
 
-  // Group main states by rank, limiting max 3 per row
   const MAX_PER_ROW = 3;
   const rawGroups = {};
   states.forEach((s, i) => {
@@ -872,7 +1779,6 @@ function renderStateMachineSVG(sm) {
     if (!rawGroups[rank[i]]) rawGroups[rank[i]] = [];
     rawGroups[rank[i]].push(i);
   });
-  // Re-assign ranks splitting wide rows
   const rankGroups = {};
   let nextRank = 0;
   const sortedRanks = Object.keys(rawGroups).map(Number).sort((a,b) => a - b);
@@ -886,11 +1792,9 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // Layout constants
   const rw = 160, rh = 38, gapX = 40, gapY = 60, padX = 30, padY = 60;
-  const sideColX = padX; // Side states on the left
+  const sideColX = padX;
 
-  // Position main flow states (centered columns per rank)
   const positions = new Array(states.length);
   const mainColStart = sideStates.length > 0 ? (rw + gapX + padX) : padX;
   let maxMainCols = 0;
@@ -914,7 +1818,6 @@ function renderStateMachineSVG(sm) {
     });
   }
 
-  // Position side states (error, timeout, aborted) on the left
   sideStates.forEach((si, row) => {
     const mainMidY = padY + (maxRank / 2) * (rh + gapY);
     const sideStartY = mainMidY - ((sideStates.length - 1) * (rh + gapY)) / 2;
@@ -925,7 +1828,6 @@ function renderStateMachineSVG(sm) {
     };
   });
 
-  // Calculate SVG bounding box from actual positions
   let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
   for (const p of positions) {
     if (!p) continue;
@@ -947,7 +1849,6 @@ function renderStateMachineSVG(sm) {
   svg += '<defs><marker id="' + arrowId + '" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">';
   svg += '<polygon points="0 0, 8 3, 0 6" fill="' + (isDark ? '#888' : '#666') + '"/></marker></defs>';
 
-  // Draw edges with bezier curves
   function drawEdge(e, isSide) {
     const fp = positions[e.from], tp = positions[e.to];
     if (!fp || !tp) return;
@@ -956,11 +1857,9 @@ function renderStateMachineSVG(sm) {
     const strokeW = isSide ? 1 : 1.5;
     const dashArr = isSide ? ' stroke-dasharray="4,3"' : '';
 
-    // Determine connection points
     let x1, y1, x2, y2;
 
     if (isSide) {
-      // Side edges: connect from right side of main to left side of side (or vice versa)
       if (fp.x > tp.x) {
         x1 = fp.x; y1 = fp.y + fp.h / 2;
         x2 = tp.x + tp.w; y2 = tp.y + tp.h / 2;
@@ -972,7 +1871,6 @@ function renderStateMachineSVG(sm) {
       const cx2 = x2 - (x2 - x1) * 0.4, cy2 = y2;
       svg += '<path d="M' + x1 + ',' + y1 + ' C' + cx1 + ',' + cy1 + ' ' + cx2 + ',' + cy2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '"' + dashArr + ' marker-end="url(#' + arrowId + ')"/>';
     } else if (Math.abs(fp.y - tp.y) < 5) {
-      // Same rank: horizontal connection
       if (fp.x < tp.x) {
         x1 = fp.x + fp.w; y1 = fp.y + fp.h / 2;
         x2 = tp.x; y2 = tp.y + tp.h / 2;
@@ -982,18 +1880,15 @@ function renderStateMachineSVG(sm) {
       }
       svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
     } else if (fp.y < tp.y) {
-      // Forward (downward): bottom to top with gentle curve
       x1 = fp.x + fp.w / 2; y1 = fp.y + fp.h;
       x2 = tp.x + tp.w / 2; y2 = tp.y;
       if (Math.abs(x1 - x2) < 5) {
-        // Straight down
         svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
       } else {
         const my = (y1 + y2) / 2;
         svg += '<path d="M' + x1 + ',' + y1 + ' C' + x1 + ',' + my + ' ' + x2 + ',' + my + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
       }
     } else {
-      // Backward (upward): route around the right side
       x1 = fp.x + fp.w; y1 = fp.y + fp.h / 2;
       x2 = tp.x + tp.w; y2 = tp.y + tp.h / 2;
       const offsetR = 25 + Math.abs(fp.y - tp.y) * 0.1;
@@ -1001,7 +1896,6 @@ function renderStateMachineSVG(sm) {
       svg += '<path d="M' + x1 + ',' + y1 + ' C' + rx + ',' + y1 + ' ' + rx + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '"' + dashArr + ' marker-end="url(#' + arrowId + ')"/>';
     }
 
-    // Timeout label
     if (e.label) {
       const mx = (fp.x + fp.w / 2 + tp.x + tp.w / 2) / 2;
       const my = (fp.y + fp.h / 2 + tp.y + tp.h / 2) / 2;
@@ -1009,11 +1903,9 @@ function renderStateMachineSVG(sm) {
     }
   }
 
-  // Draw back/side edges first (behind), then forward edges
   backEdges.forEach(e => drawEdge(e, true));
   fwdEdges.forEach(e => drawEdge(e, false));
 
-  // State rectangles
   const normFill = isDark ? '#1a1a35' : '#f0f0ff';
   const normStroke = isDark ? '#3d3d5e' : '#b0b0cc';
   const initFill = isDark ? '#0a2e1a' : '#e8f5e9';
@@ -1065,13 +1957,17 @@ function hideTooltip() { tooltipEl.style.display = 'none'; }
 
 // ── Filtering ──
 function applyFilter() {
+  if (currentView !== 'tree') {
+    applyFlatFilter();
+    return;
+  }
+
   const query = document.getElementById('search').value.toLowerCase().trim();
   const sevFilter = document.getElementById('filter-severity').value;
   const reasonFilter = document.getElementById('filter-reason').value;
   const hideNonMatch = document.getElementById('cb-hide').checked || !!activeChip;
   let matchCount = 0;
 
-  // Filter alarm rows
   for (const { el: aEl, alarm, parentNodeId } of allAlarmRows) {
     const sev = getSeverity(alarm);
     const reason = alarm.unresolvedReason || 'None';
@@ -1095,12 +1991,10 @@ function applyFilter() {
     }
   }
 
-  // Filter module rows (match if name/type matches OR has matching alarm children)
   for (const { el: mEl, node } of allNodeRows) {
     const searchable = mEl.dataset.searchable || '';
     let match = true;
 
-    // Chip filter
     if (activeChip && !nodeMatchesChip(node, activeChip)) match = false;
 
     if (alarmsOnlyMode) {
@@ -1129,6 +2023,26 @@ function applyFilter() {
   document.getElementById('match-count').textContent = filterActive ? matchCount + ' alarm' + (matchCount !== 1 ? 's' : '') + ' matched' + chipLabel : '';
 }
 
+function applyFlatFilter() {
+  const query = document.getElementById('search').value.toLowerCase().trim();
+  let matchCount = 0;
+
+  for (const { el: fEl, item, type } of allFlatItems) {
+    const searchable = fEl.dataset.searchable || '';
+    let match = true;
+    if (query && searchable.indexOf(query) < 0) match = false;
+
+    fEl.classList.remove('dimmed', 'hidden-filter');
+    if (!match) {
+      fEl.classList.add('hidden-filter');
+    } else {
+      matchCount++;
+    }
+  }
+
+  document.getElementById('match-count').textContent = query ? matchCount + ' match' + (matchCount !== 1 ? 'es' : '') : '';
+}
+
 function isDescendant(node, alarm) {
   if (!node || !alarm) return false;
   if (node.alarms && node.alarms.indexOf(alarm) >= 0) return true;
@@ -1138,29 +2052,33 @@ function isDescendant(node, alarm) {
 
 // ── Init ──
 function init() {
+  buildLookups();
   renderStats();
 
-  // Build tree
   const container = document.getElementById('tree-container');
   container.innerHTML = '';
   allNodeRows = [];
   allAlarmRows = [];
   const tree = DATA.tree || [];
-  if (tree.length === 0) {
+
+  if (tree.length === 0 && (DATA.pous || []).length === 0 && (DATA.duts || []).length === 0 && (DATA.gvls || []).length === 0) {
     container.innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">No data available. Ensure JSON data is injected at the DATA_PLACEHOLDER.</p>';
     return;
   }
 
-  // Default: expand first two levels
-  function preExpand(nodes, d) {
-    for (const n of nodes) {
-      if (d < 2 && n.fullPath) expandedSet.add(n.fullPath);
-      if (n.children && d < 1) preExpand(n.children, d + 1);
+  if (tree.length > 0) {
+    function preExpand(nodes, d) {
+      for (const n of nodes) {
+        if (d < 2 && n.fullPath) expandedSet.add(n.fullPath);
+        if (n.children && d < 1) preExpand(n.children, d + 1);
+      }
     }
+    preExpand(tree, 0);
+    buildTree(tree, container, 0);
+  } else {
+    // No tree data but have POUs — switch to POU view
+    setViewMode('pous');
   }
-  preExpand(tree, 0);
-
-  buildTree(tree, container, 0);
 
   // Toolbar buttons
   document.getElementById('btn-expand').addEventListener('click', expandAll);
@@ -1178,16 +2096,45 @@ function init() {
     document.getElementById('sidebar').classList.toggle('hidden');
   });
 
+  // View switcher
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      setViewMode(this.dataset.view);
+    });
+  });
+
   // Stat chip toggle filters
   document.querySelectorAll('.stat-toggle').forEach(chip => {
     chip.addEventListener('click', function() {
       const chipVal = this.dataset.chip;
+
+      // POUs, DUTs, GVLs chips switch view mode
+      if (chipVal === 'pou' || chipVal === 'dut' || chipVal === 'gvl') {
+        const viewMap = { pou: 'pous', dut: 'duts', gvl: 'gvls' };
+        if (currentView === viewMap[chipVal]) {
+          // Toggle off — back to tree
+          setViewMode('tree');
+          document.querySelectorAll('.stat-toggle').forEach(c => c.classList.remove('chip-active', 'chip-inactive'));
+          activeChip = null;
+        } else {
+          setViewMode(viewMap[chipVal]);
+          activeChip = null;
+          document.querySelectorAll('.stat-toggle').forEach(c => {
+            c.classList.remove('chip-active', 'chip-inactive');
+            if (c.dataset.chip === chipVal) c.classList.add('chip-active');
+            else c.classList.add('chip-inactive');
+          });
+        }
+        return;
+      }
+
+      // Severity/SM/IO chips filter the tree
+      if (currentView !== 'tree') setViewMode('tree');
+
       if (activeChip === chipVal) {
-        // Deactivate — clear filter
         activeChip = null;
         document.querySelectorAll('.stat-toggle').forEach(c => c.classList.remove('chip-active', 'chip-inactive'));
       } else {
-        // Activate this chip
         activeChip = chipVal;
         document.querySelectorAll('.stat-toggle').forEach(c => {
           c.classList.remove('chip-active', 'chip-inactive');
@@ -1202,7 +2149,12 @@ function init() {
   document.getElementById('btn-close-detail').addEventListener('click', function() {
     document.getElementById('detail').classList.remove('visible');
     document.querySelectorAll('.node-row.selected').forEach(r => r.classList.remove('selected'));
+    document.querySelectorAll('.flat-item.selected').forEach(r => r.classList.remove('selected'));
     selectedNode = null;
+    selectedPou = null;
+    selectedDut = null;
+    selectedGvl = null;
+    currentDetailType = null;
   });
 
   // Filters
@@ -1214,10 +2166,10 @@ function init() {
   // Detail tabs
   document.getElementById('detail-tabs').addEventListener('click', function(e) {
     const btn = e.target.closest('.tab-btn');
-    if (!btn || !selectedNode) return;
+    if (!btn || btn.classList.contains('disabled')) return;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderDetailTab(btn.dataset.tab, selectedNode);
+    renderCurrentTab();
   });
 }
 

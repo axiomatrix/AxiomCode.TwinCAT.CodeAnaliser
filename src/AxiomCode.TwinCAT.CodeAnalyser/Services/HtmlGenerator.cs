@@ -31,7 +31,36 @@ public static class HtmlGenerator
             alarms = project.AllAlarms,
             stateMachines = project.AllStateMachines,
             ioMappings = project.AllIoMappings,
-            unresolvedTypes = project.UnresolvedTypes.OrderBy(t => t).ToList()
+            unresolvedTypes = project.UnresolvedTypes.OrderBy(t => t).ToList(),
+            // Full project data for programmer interrogation
+            pous = project.POUs.Values.Select(p => new
+            {
+                p.Name, p.PouType, p.IsAbstract, p.ExtendsType, p.ImplementsList,
+                p.InheritanceChain,
+                variables = p.Variables.Select(v => VarDto(v)),
+                allVariables = p.AllVariables.Select(v => VarDto(v)),
+                methods = p.Methods.Select(m => new
+                {
+                    m.Name, m.Visibility, m.ReturnType, m.FolderPath, m.Body,
+                    localVars = m.LocalVars.Select(v => VarDto(v)),
+                    parameters = m.Parameters.Select(v => VarDto(v))
+                }),
+                properties = p.Properties.Select(pr => new
+                {
+                    pr.Name, pr.DataType, pr.HasGetter, pr.HasSetter, pr.GetBody, pr.SetBody
+                })
+            }).OrderBy(p => p.Name).ToList(),
+            duts = project.DUTs.Values.Select(d => new
+            {
+                d.Name, d.DutType, d.BaseType, d.Attributes,
+                enumValues = d.EnumValues.Select(e => new { e.Name, e.Value, e.Comment }),
+                members = d.Members.Select(v => VarDto(v))
+            }).OrderBy(d => d.Name).ToList(),
+            gvls = project.GVLs.Values.Select(g => new
+            {
+                g.Name, g.QualifiedOnly,
+                variables = g.Variables.Select(v => VarDto(v))
+            }).OrderBy(g => g.Name).ToList()
         };
 
         var json = JsonSerializer.Serialize(data, JsonOpts);
@@ -46,6 +75,13 @@ public static class HtmlGenerator
 
         File.WriteAllText(outputPath, html);
     }
+
+    private static object VarDto(TcVariable v) => new
+    {
+        v.Name, v.DataType, v.Scope, v.InitialValue, v.Comment,
+        v.IsReference, v.IsPointer, v.IsArray, v.ArrayBounds,
+        v.AtBinding, v.ConstructorArgs
+    };
 
     private static string LoadTemplate()
     {
