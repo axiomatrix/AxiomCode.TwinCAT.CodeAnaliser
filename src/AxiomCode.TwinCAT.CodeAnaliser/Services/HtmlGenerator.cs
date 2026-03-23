@@ -36,8 +36,8 @@ public static class HtmlGenerator
 
         var json = JsonSerializer.Serialize(data, JsonOpts);
 
-        // Inject JSON into template at the DATA_PLACEHOLDER marker
-        var html = template.Replace("/*DATA_PLACEHOLDER*/", json);
+        // Inject JSON into template, replacing the entire placeholder including fallback braces
+        var html = template.Replace("/*DATA_PLACEHOLDER*/{}", json);
 
         // Ensure output directory exists
         var dir = Path.GetDirectoryName(outputPath);

@@ -18,7 +18,6 @@
   --reason-nomethod-bg: #3b2020; --reason-nomethod-fg: #f87171;
   --reason-missing-bg: #2d2040; --reason-missing-fg: #c084fc;
   --reason-dead-bg: #1a2030; --reason-dead-fg: #94a3b8;
-  --theme-icon: "\\263E";
 }
 [data-theme="light"] {
   --bg: #f5f5f7; --panel: #ffffff; --panel-alt: #f0f0f5; --border: #d0d0dd;
@@ -31,7 +30,6 @@
   --reason-nomethod-bg: #fef2f2; --reason-nomethod-fg: #dc2626;
   --reason-missing-bg: #faf5ff; --reason-missing-fg: #7c3aed;
   --reason-dead-bg: #f1f5f9; --reason-dead-fg: #64748b;
-  --theme-icon: "\\2600";
 }
 html, body { height: 100%; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; overflow: hidden; }
 a { color: var(--accent); text-decoration: none; }
@@ -42,6 +40,10 @@ a:hover { text-decoration: underline; }
 #stats-bar { display: flex; gap: 6px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; min-height: 42px; }
 .stat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; background: var(--panel-alt); border: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
 .stat-chip .stat-val { font-weight: 700; font-size: 14px; }
+.stat-toggle { cursor: pointer; user-select: none; transition: all 0.15s; }
+.stat-toggle:hover { filter: brightness(1.2); transform: translateY(-1px); }
+.stat-toggle.chip-active { outline: 2px solid var(--accent); outline-offset: 1px; filter: brightness(1.3); }
+.stat-toggle.chip-inactive { opacity: 0.35; }
 .stat-chip.critical { border-color: var(--critical); }
 .stat-chip.critical .stat-val { color: var(--critical); }
 .stat-chip.process { border-color: var(--process); }
@@ -159,7 +161,11 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 .sm-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; background: var(--panel-alt); }
 .sm-card-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
 .sm-card-body { padding: 12px; }
-.sm-svg-wrap { overflow: auto; margin-bottom: 8px; }
+.sm-svg-wrap { overflow: auto; margin-bottom: 8px; position: relative; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); max-height: 70vh; }
+.sm-svg-wrap svg { display: block; min-width: 100%; height: auto; }
+.sm-zoom-controls { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; z-index: 5; }
+.sm-zoom-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
+.sm-zoom-btn:hover { opacity: 1; border-color: var(--accent); }
 .sm-code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; display: none; color: #c9d1d9; }
 .sm-code.visible { display: block; }
 
@@ -178,9 +184,15 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border); }
 
+/* Resize handles */
+.resize-handle { width: 5px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; z-index: 10; }
+.resize-handle:hover, .resize-handle.dragging { background: var(--accent); opacity: 0.5; }
+body.resizing { cursor: col-resize !important; user-select: none !important; }
+body.resizing * { cursor: col-resize !important; user-select: none !important; pointer-events: none !important; }
+body.resizing .resize-handle { pointer-events: auto !important; }
+
 /* Theme toggle button */
-.btn-theme { font-size: 16px; padding: 3px 8px; }
-.btn-theme::before { content: var(--theme-icon); }
+.btn-theme { font-size: 16px; padding: 3px 8px; min-width: 32px; text-align: center; }
 </style>
 </head>
 <body>
@@ -188,16 +200,16 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
   <!-- Stats Bar -->
   <div id="stats-bar">
     <span id="project-name"></span>
-    <div class="stat-chip"><span class="stat-val" id="s-pou">-</span> POUs</div>
-    <div class="stat-chip"><span class="stat-val" id="s-dut">-</span> DUTs</div>
-    <div class="stat-chip"><span class="stat-val" id="s-gvl">-</span> GVLs</div>
-    <div class="stat-chip critical"><span class="stat-val" id="s-crit">-</span> Critical</div>
-    <div class="stat-chip process"><span class="stat-val" id="s-proc">-</span> Process</div>
-    <div class="stat-chip advisory"><span class="stat-val" id="s-adv">-</span> Advisory</div>
-    <div class="stat-chip info"><span class="stat-val" id="s-info">-</span> Info</div>
-    <div class="stat-chip unresolved"><span class="stat-val" id="s-unres">-</span> Unresolved</div>
-    <div class="stat-chip"><span class="stat-val" id="s-sm">-</span> State Machines</div>
-    <div class="stat-chip"><span class="stat-val" id="s-io">-</span> IO Points</div>
+    <div class="stat-chip stat-toggle" data-chip="pou" title="Show only modules (click to filter)"><span class="stat-val" id="s-pou">-</span> POUs</div>
+    <div class="stat-chip stat-toggle" data-chip="dut" title="DUT count (info only)"><span class="stat-val" id="s-dut">-</span> DUTs</div>
+    <div class="stat-chip stat-toggle" data-chip="gvl" title="GVL count (info only)"><span class="stat-val" id="s-gvl">-</span> GVLs</div>
+    <div class="stat-chip critical stat-toggle" data-chip="Critical" title="Show only Critical alarms"><span class="stat-val" id="s-crit">-</span> Critical</div>
+    <div class="stat-chip process stat-toggle" data-chip="Process" title="Show only Process alarms"><span class="stat-val" id="s-proc">-</span> Process</div>
+    <div class="stat-chip advisory stat-toggle" data-chip="Advisory" title="Show only Advisory alarms"><span class="stat-val" id="s-adv">-</span> Advisory</div>
+    <div class="stat-chip info stat-toggle" data-chip="Information" title="Show only Information alarms"><span class="stat-val" id="s-info">-</span> Information</div>
+    <div class="stat-chip unresolved stat-toggle" data-chip="Unresolved" title="Show only Unresolved alarms"><span class="stat-val" id="s-unres">-</span> Unresolved</div>
+    <div class="stat-chip stat-toggle" data-chip="sm" title="Show only modules with State Machines"><span class="stat-val" id="s-sm">-</span> State Machines</div>
+    <div class="stat-chip stat-toggle" data-chip="io" title="Show only modules with IO mappings"><span class="stat-val" id="s-io">-</span> IO Points</div>
   </div>
 
   <div id="main">
@@ -271,10 +283,12 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
       </div>
     </div>
 
+    <div class="resize-handle" id="resize-sidebar" title="Drag to resize"></div>
+
     <!-- Center -->
     <div id="center">
       <div id="toolbar">
-        <button class="btn btn-theme" id="btn-theme" title="Toggle light/dark theme"></button>
+        <button class="btn btn-theme" id="btn-theme" title="Toggle light/dark theme">&#x263E;</button>
         <button class="btn" id="btn-sidebar" title="Toggle documentation sidebar">&#x2630; Docs</button>
         <button class="btn" id="btn-expand">Expand All</button>
         <button class="btn" id="btn-collapse">Collapse All</button>
@@ -301,6 +315,8 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
       </div>
       <div id="tree-container"></div>
     </div>
+
+    <div class="resize-handle" id="resize-detail" title="Drag to resize"></div>
 
     <!-- Detail Panel -->
     <div id="detail">
@@ -329,16 +345,19 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 const DATA = /*DATA_PLACEHOLDER*/{};
 
 // ── Theme ──
-function initTheme() {
-  const saved = localStorage.getItem('tca-theme');
-  const theme = saved || 'dark';
+function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = theme === 'dark' ? '\u263E' : '\u2600';
+}
+function initTheme() {
+  applyTheme(localStorage.getItem('tca-theme') || 'dark');
 }
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('tca-theme', next);
+  applyTheme(next);
 }
 initTheme();
 
@@ -381,12 +400,45 @@ function alarmSevColor(s) {
 function isUnresolved(a) { return a.unresolvedReason && a.unresolvedReason !== 'None'; }
 function getSeverity(a) { return isUnresolved(a) ? 'Unresolved' : (a.severity || 'Unknown'); }
 
+function hasStateMachines(node) {
+  if ((node.stateMachines || []).length > 0) return true;
+  for (const ch of (node.children || [])) { if (hasStateMachines(ch)) return true; }
+  return false;
+}
+function hasIoMappings(node) {
+  if ((node.ioMappings || []).length > 0) return true;
+  for (const ch of (node.children || [])) { if (hasIoMappings(ch)) return true; }
+  return false;
+}
+function hasAlarmWithSeverity(node, sev) {
+  for (const a of (node.alarms || [])) {
+    if (getSeverity(a) === sev) return true;
+  }
+  for (const ch of (node.children || [])) { if (hasAlarmWithSeverity(ch, sev)) return true; }
+  return false;
+}
+function nodeMatchesChip(node, chip) {
+  if (!chip) return true;
+  if (chip === 'sm') return hasStateMachines(node);
+  if (chip === 'io') return hasIoMappings(node);
+  if (chip === 'pou') return true; // all nodes are POUs
+  if (chip === 'dut' || chip === 'gvl') return true; // info only
+  // Severity filters
+  return hasAlarmWithSeverity(node, chip);
+}
+function alarmMatchesChip(alarm, chip) {
+  if (!chip) return true;
+  if (chip === 'sm' || chip === 'io' || chip === 'pou' || chip === 'dut' || chip === 'gvl') return true;
+  return getSeverity(alarm) === chip;
+}
+
 // ── State ──
 let selectedNode = null;
 let allNodeRows = [];
 let allAlarmRows = [];
 let expandedSet = new Set();
 let alarmsOnlyMode = false;
+let activeChip = null; // Currently active stat chip filter
 
 // ── Stats ──
 function renderStats() {
@@ -469,7 +521,7 @@ function buildTree(nodes, container, depth) {
         aRow.dataset.reason = alarm.unresolvedReason || 'None';
 
         aRow.appendChild(el('span', { className: 'node-icon' }, '\u26A0\uFE0F'));
-        aRow.appendChild(el('span', { className: 'sev-badge ' + sevClass(sev) }, sev.substring(0, 4).toUpperCase()));
+        aRow.appendChild(el('span', { className: 'sev-badge ' + sevClass(sev) }, sev.toUpperCase()));
         aRow.appendChild(el('span', { className: 'alarm-cond' }, alarm.condition || alarm.instanceName));
 
         if (isUnresolved(alarm)) {
@@ -597,9 +649,41 @@ function renderDetailTab(tab, node) {
       card.appendChild(header);
       const cardBody = el('div', { className: 'sm-card-body' });
 
-      // SVG
+      // SVG with zoom controls
       const svgWrap = el('div', { className: 'sm-svg-wrap' });
       svgWrap.innerHTML = renderStateMachineSVG(sm);
+      const svgEl = svgWrap.querySelector('svg');
+      let smZoom = 1;
+      if (svgEl) {
+        const vb = svgEl.getAttribute('viewBox');
+        // Add zoom controls
+        const controls = el('div', { className: 'sm-zoom-controls' });
+        const btnZoomIn = el('button', { className: 'sm-zoom-btn', title: 'Zoom in' }, '+');
+        const btnZoomOut = el('button', { className: 'sm-zoom-btn', title: 'Zoom out' }, '\u2212');
+        const btnFit = el('button', { className: 'sm-zoom-btn', title: 'Fit to width' }, '\u2922');
+        controls.appendChild(btnZoomIn);
+        controls.appendChild(btnZoomOut);
+        controls.appendChild(btnFit);
+        svgWrap.appendChild(controls);
+
+        function applySmZoom() {
+          svgEl.style.width = (smZoom * 100) + '%';
+          svgEl.style.height = 'auto';
+          svgWrap.style.overflow = 'auto';
+        }
+        btnZoomIn.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.min(3, smZoom + 0.25); applySmZoom(); });
+        btnZoomOut.addEventListener('click', function(e) { e.stopPropagation(); smZoom = Math.max(0.25, smZoom - 0.25); applySmZoom(); });
+        btnFit.addEventListener('click', function(e) { e.stopPropagation(); smZoom = 1; applySmZoom(); });
+
+        // Mouse wheel zoom
+        svgWrap.addEventListener('wheel', function(e) {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            smZoom = Math.max(0.25, Math.min(3, smZoom + (e.deltaY < 0 ? 0.15 : -0.15)));
+            applySmZoom();
+          }
+        }, { passive: false });
+      }
       cardBody.appendChild(svgWrap);
 
       // Code display area
@@ -654,63 +738,302 @@ function renderDetailTab(tab, node) {
 
 // ── State Machine SVG ──
 function renderStateMachineSVG(sm) {
-  const states = sm.states || [];
-  if (states.length === 0) return '<p style="color:var(--muted)">No states defined.</p>';
-
-  const cols = Math.min(4, states.length);
-  const rw = 140, rh = 40, gapX = 30, gapY = 50, padX = 20, padY = 30;
-  const totalW = cols * (rw + gapX) - gapX + padX * 2;
-  const rows = Math.ceil(states.length / cols);
-  const totalH = rows * (rh + gapY) - gapY + padY * 2 + 20;
-
-  // Position each state
-  const positions = states.map((s, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    return { x: padX + col * (rw + gapX), y: padY + row * (rh + gapY), w: rw, h: rh, state: s, idx: i };
-  });
-
-  let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalW + '" height="' + totalH + '" style="min-width:' + totalW + 'px;">';
-  svg += '<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#888"/></marker></defs>';
-
-  // Transitions (arrows)
+  const allStates = sm.states || [];
+  if (allStates.length === 0) return '<p style="color:var(--muted)">No states defined.</p>';
+  // Filter out ELSE — it's not a real state, just a catch-all branch
+  const states = allStates.filter(s => s.name !== 'ELSE');
+  if (states.length === 0) return '<p style="color:var(--muted)">No named states found (only ELSE branch).</p>';
   const transitions = sm.transitions || [];
+  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+
+  // Helper: extract short state name from full enum ref like "E_xxx.StateName"
+  function shortName(s) { if (!s) return ''; const d = s.lastIndexOf('.'); return d >= 0 ? s.substring(d + 1) : s; }
+
+  // Build adjacency: forward edges only (from → to by order of appearance or transition)
+  const nameToIdx = {};
+  states.forEach((s, i) => { nameToIdx[s.name.toLowerCase()] = i; });
+
+  const fwdEdges = []; // {from, to, label}
+  const backEdges = [];
+  const edgeSeen = new Set();
+
+  function addEdge(from, to, label, forceSide) {
+    if (from === to || from === undefined || to === undefined) return;
+    const key = from + '->' + to;
+    if (edgeSeen.has(key)) return;
+    edgeSeen.add(key);
+    const edge = { from, to, label: label || '' };
+    const ts = states[to];
+    if (forceSide || ts.isError || ts.isTimeout || (ts.name||'').toLowerCase().includes('abort')) {
+      backEdges.push(edge);
+    } else {
+      fwdEdges.push(edge);
+    }
+  }
+
+  // Step 1: Add explicit (non-ELSE) transitions
   for (const t of transitions) {
-    const fromPos = positions.find(p => t.fromState && t.fromState.indexOf(p.state.name) >= 0);
-    const toPos = positions.find(p => t.toState && t.toState.indexOf(p.state.name) >= 0);
-    if (fromPos && toPos && fromPos !== toPos) {
-      const fx = fromPos.x + fromPos.w / 2, fy = fromPos.y + fromPos.h;
-      const tx = toPos.x + toPos.w / 2, ty = toPos.y;
-      // Simple line
-      let x1 = fx, y1 = fy, x2 = tx, y2 = ty;
-      // Adjust for same-row or backward
-      if (fromPos.y === toPos.y) {
-        // Same row: go right side
-        x1 = fromPos.x + fromPos.w; y1 = fromPos.y + fromPos.h / 2;
-        x2 = toPos.x; y2 = toPos.y + toPos.h / 2;
-      } else if (fy > ty) {
-        // Going upward
-        x1 = fromPos.x; y1 = fromPos.y + fromPos.h / 2;
-        x2 = toPos.x; y2 = toPos.y + toPos.h / 2;
-      }
-      svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>';
-      if (t.timeoutValue) {
-        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-        svg += '<text x="' + mx + '" y="' + (my - 4) + '" fill="#888" font-size="9" text-anchor="middle">' + esc(t.timeoutValue) + '</text>';
+    const fs = shortName(t.fromState), ts = shortName(t.toState);
+    if (fs === 'ELSE' || !fs || !ts) continue;
+    addEdge(nameToIdx[fs.toLowerCase()], nameToIdx[ts.toLowerCase()], t.timeoutValue);
+  }
+
+  // Step 2: Redirect ELSE transitions into method-based sequential chains
+  // In ISA-88 code, CASE handles FirstScan init; ELSE handles ongoing transitions.
+  // ELSE→A, ELSE→B, ELSE→C from same method means A→B→C chain.
+  const elseByMethod = {};
+  for (const t of transitions) {
+    if (shortName(t.fromState) !== 'ELSE') continue;
+    const ts = shortName(t.toState);
+    const ti = nameToIdx[ts.toLowerCase()];
+    if (ti === undefined) continue;
+    const m = t.methodName || '';
+    if (!elseByMethod[m]) elseByMethod[m] = [];
+    elseByMethod[m].push({ idx: ti, timeout: t.timeoutValue || '' });
+  }
+
+  for (const method in elseByMethod) {
+    const targets = elseByMethod[method];
+    // Chain consecutive targets (parser preserves code order)
+    for (let i = 0; i < targets.length - 1; i++) {
+      addEdge(targets[i].idx, targets[i + 1].idx, targets[i + 1].timeout);
+    }
+    // Find entry state: a state from this method that isn't an ELSE target
+    const tgtSet = new Set(targets.map(t => t.idx));
+    const entry = states.findIndex((s, i) => s.methodName === method && !tgtSet.has(i));
+    if (entry >= 0 && targets.length > 0) {
+      addEdge(entry, targets[0].idx, targets[0].timeout);
+    }
+  }
+
+  // Step 3: Chain orphaned states by enum value order
+  const hasEdge = new Set();
+  fwdEdges.forEach(e => { hasEdge.add(e.from); hasEdge.add(e.to); });
+  backEdges.forEach(e => { hasEdge.add(e.from); hasEdge.add(e.to); });
+  const orphans = states.map((s, i) => i)
+    .filter(i => !hasEdge.has(i) && !states[i].isError && !states[i].isTimeout
+      && !(states[i].name||'').toLowerCase().includes('abort'));
+  if (orphans.length > 1) {
+    orphans.sort((a, b) => (parseInt(states[a].value)||9999) - (parseInt(states[b].value)||9999) || a - b);
+    for (let i = 0; i < orphans.length - 1; i++) addEdge(orphans[i], orphans[i + 1], '');
+  }
+
+  // Assign ranks: BFS shortest-path from initial state, forward edges only
+  // This ensures the initial state is always rank 0 at the top
+  const rank = new Array(states.length).fill(-1);
+  const initialIdx = states.findIndex(s => s.isInitial);
+  const startIdx = initialIdx >= 0 ? initialIdx : 0;
+
+  // Build forward adjacency (ignore cycles by only visiting each node once)
+  rank[startIdx] = 0;
+  const bfsQueue = [startIdx];
+  const bfsVisited = new Set([startIdx]);
+  while (bfsQueue.length > 0) {
+    const cur = bfsQueue.shift();
+    for (const e of fwdEdges) {
+      if (e.from === cur && !bfsVisited.has(e.to)) {
+        rank[e.to] = rank[cur] + 1;
+        bfsVisited.add(e.to);
+        bfsQueue.push(e.to);
       }
     }
   }
 
-  // State rectangles
-  for (const p of positions) {
-    const s = p.state;
-    let fill = '#1a1a35', stroke = '#3d3d5e';
-    if (s.isInitial) { fill = '#0a2e1a'; stroke = '#22c55e'; }
-    else if (s.isError || s.isTimeout) { fill = '#2e0a0a'; stroke = '#ef4444'; }
-    else if (s.isTransition) { fill = '#1a1a25'; stroke = '#666'; }
+  // States not reachable via forward edges from initial: try reverse BFS
+  // (they may only be reachable as targets of backward transitions)
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const e of fwdEdges) {
+      if (rank[e.from] >= 0 && rank[e.to] < 0) {
+        rank[e.to] = rank[e.from] + 1;
+        changed = true;
+      }
+      if (rank[e.to] >= 0 && rank[e.from] < 0) {
+        rank[e.from] = Math.max(0, rank[e.to] - 1);
+        changed = true;
+      }
+    }
+  }
 
-    svg += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="6" ry="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" data-state-index="' + p.idx + '"/>';
-    svg += '<text x="' + (p.x + p.w / 2) + '" y="' + (p.y + p.h / 2 + 4) + '" fill="#e0e0e0" font-size="11" text-anchor="middle" pointer-events="none">' + esc(truncate(s.name, 18)) + '</text>';
+  // Side states: error, timeout, aborted, and anything still unranked
+  const sideStates = [];
+  states.forEach((s, i) => {
+    if (rank[i] < 0) sideStates.push(i);
+  });
+
+  const maxRank = Math.max(...rank.filter(r => r >= 0), 0);
+
+  // Group main states by rank, limiting max 3 per row
+  const MAX_PER_ROW = 3;
+  const rawGroups = {};
+  states.forEach((s, i) => {
+    if (sideStates.includes(i)) return;
+    if (!rawGroups[rank[i]]) rawGroups[rank[i]] = [];
+    rawGroups[rank[i]].push(i);
+  });
+  // Re-assign ranks splitting wide rows
+  const rankGroups = {};
+  let nextRank = 0;
+  const sortedRanks = Object.keys(rawGroups).map(Number).sort((a,b) => a - b);
+  for (const r of sortedRanks) {
+    const group = rawGroups[r];
+    for (let i = 0; i < group.length; i += MAX_PER_ROW) {
+      const chunk = group.slice(i, i + MAX_PER_ROW);
+      rankGroups[nextRank] = chunk;
+      chunk.forEach(si => { rank[si] = nextRank; });
+      nextRank++;
+    }
+  }
+
+  // Layout constants
+  const rw = 160, rh = 38, gapX = 40, gapY = 60, padX = 30, padY = 60;
+  const sideColX = padX; // Side states on the left
+
+  // Position main flow states (centered columns per rank)
+  const positions = new Array(states.length);
+  const mainColStart = sideStates.length > 0 ? (rw + gapX + padX) : padX;
+  let maxMainCols = 0;
+
+  for (const r in rankGroups) {
+    const group = rankGroups[r];
+    maxMainCols = Math.max(maxMainCols, group.length);
+  }
+
+  for (const r in rankGroups) {
+    const group = rankGroups[r];
+    const rowWidth = group.length * (rw + gapX) - gapX;
+    const totalMainWidth = maxMainCols * (rw + gapX) - gapX;
+    const offsetX = mainColStart + (totalMainWidth - rowWidth) / 2;
+    group.forEach((si, col) => {
+      positions[si] = {
+        x: offsetX + col * (rw + gapX),
+        y: padY + parseInt(r) * (rh + gapY),
+        w: rw, h: rh, state: states[si], idx: si
+      };
+    });
+  }
+
+  // Position side states (error, timeout, aborted) on the left
+  sideStates.forEach((si, row) => {
+    const mainMidY = padY + (maxRank / 2) * (rh + gapY);
+    const sideStartY = mainMidY - ((sideStates.length - 1) * (rh + gapY)) / 2;
+    positions[si] = {
+      x: sideColX,
+      y: sideStartY + row * (rh + gapY),
+      w: rw, h: rh, state: states[si], idx: si
+    };
+  });
+
+  // Calculate SVG bounding box from actual positions
+  let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+  for (const p of positions) {
+    if (!p) continue;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x + p.w);
+    maxY = Math.max(maxY, p.y + p.h);
+  }
+  if (minX === Infinity) { minX = 0; minY = 0; maxX = 200; maxY = 100; }
+
+  const arrowId = 'arrow-' + (sm.instanceName || '').replace(/\W/g, '') + Math.random().toString(36).slice(2, 6);
+
+  const vbPad = 50;
+  const vbX = minX - vbPad;
+  const vbY = minY - vbPad;
+  const vbW = (maxX - minX) + vbPad * 2;
+  const vbH = (maxY - minY) + vbPad * 2;
+  let svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vbX + ' ' + vbY + ' ' + vbW + ' ' + vbH + '" preserveAspectRatio="xMidYMid meet">';
+  svg += '<defs><marker id="' + arrowId + '" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">';
+  svg += '<polygon points="0 0, 8 3, 0 6" fill="' + (isDark ? '#888' : '#666') + '"/></marker></defs>';
+
+  // Draw edges with bezier curves
+  function drawEdge(e, isSide) {
+    const fp = positions[e.from], tp = positions[e.to];
+    if (!fp || !tp) return;
+
+    const strokeCol = isSide ? (isDark ? '#553333' : '#cc9999') : (isDark ? '#555' : '#999');
+    const strokeW = isSide ? 1 : 1.5;
+    const dashArr = isSide ? ' stroke-dasharray="4,3"' : '';
+
+    // Determine connection points
+    let x1, y1, x2, y2;
+
+    if (isSide) {
+      // Side edges: connect from right side of main to left side of side (or vice versa)
+      if (fp.x > tp.x) {
+        x1 = fp.x; y1 = fp.y + fp.h / 2;
+        x2 = tp.x + tp.w; y2 = tp.y + tp.h / 2;
+      } else {
+        x1 = fp.x + fp.w; y1 = fp.y + fp.h / 2;
+        x2 = tp.x; y2 = tp.y + tp.h / 2;
+      }
+      const cx1 = x1 + (x2 - x1) * 0.4, cy1 = y1;
+      const cx2 = x2 - (x2 - x1) * 0.4, cy2 = y2;
+      svg += '<path d="M' + x1 + ',' + y1 + ' C' + cx1 + ',' + cy1 + ' ' + cx2 + ',' + cy2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '"' + dashArr + ' marker-end="url(#' + arrowId + ')"/>';
+    } else if (Math.abs(fp.y - tp.y) < 5) {
+      // Same rank: horizontal connection
+      if (fp.x < tp.x) {
+        x1 = fp.x + fp.w; y1 = fp.y + fp.h / 2;
+        x2 = tp.x; y2 = tp.y + tp.h / 2;
+      } else {
+        x1 = fp.x; y1 = fp.y + fp.h / 2;
+        x2 = tp.x + tp.w; y2 = tp.y + tp.h / 2;
+      }
+      svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
+    } else if (fp.y < tp.y) {
+      // Forward (downward): bottom to top with gentle curve
+      x1 = fp.x + fp.w / 2; y1 = fp.y + fp.h;
+      x2 = tp.x + tp.w / 2; y2 = tp.y;
+      if (Math.abs(x1 - x2) < 5) {
+        // Straight down
+        svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
+      } else {
+        const my = (y1 + y2) / 2;
+        svg += '<path d="M' + x1 + ',' + y1 + ' C' + x1 + ',' + my + ' ' + x2 + ',' + my + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '" marker-end="url(#' + arrowId + ')"/>';
+      }
+    } else {
+      // Backward (upward): route around the right side
+      x1 = fp.x + fp.w; y1 = fp.y + fp.h / 2;
+      x2 = tp.x + tp.w; y2 = tp.y + tp.h / 2;
+      const offsetR = 25 + Math.abs(fp.y - tp.y) * 0.1;
+      const rx = Math.max(x1, x2) + offsetR;
+      svg += '<path d="M' + x1 + ',' + y1 + ' C' + rx + ',' + y1 + ' ' + rx + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + strokeCol + '" stroke-width="' + strokeW + '"' + dashArr + ' marker-end="url(#' + arrowId + ')"/>';
+    }
+
+    // Timeout label
+    if (e.label) {
+      const mx = (fp.x + fp.w / 2 + tp.x + tp.w / 2) / 2;
+      const my = (fp.y + fp.h / 2 + tp.y + tp.h / 2) / 2;
+      svg += '<text x="' + mx + '" y="' + (my - 4) + '" fill="' + (isDark ? '#888' : '#666') + '" font-size="9" text-anchor="middle">' + esc(e.label) + '</text>';
+    }
+  }
+
+  // Draw back/side edges first (behind), then forward edges
+  backEdges.forEach(e => drawEdge(e, true));
+  fwdEdges.forEach(e => drawEdge(e, false));
+
+  // State rectangles
+  const normFill = isDark ? '#1a1a35' : '#f0f0ff';
+  const normStroke = isDark ? '#3d3d5e' : '#b0b0cc';
+  const initFill = isDark ? '#0a2e1a' : '#e8f5e9';
+  const initStroke = '#22c55e';
+  const errFill = isDark ? '#2e0a0a' : '#fef2f2';
+  const errStroke = '#ef4444';
+  const transFill = isDark ? '#1a1a25' : '#f5f5f5';
+  const transStroke = isDark ? '#666' : '#aaa';
+  const textFill = isDark ? '#e0e0e0' : '#1a1a2e';
+
+  for (const p of positions) {
+    if (!p) continue;
+    const s = p.state;
+    let fill = normFill, stroke = normStroke;
+    if (s.isInitial) { fill = initFill; stroke = initStroke; }
+    else if (s.isError || s.isTimeout) { fill = errFill; stroke = errStroke; }
+    else if (s.isTransition) { fill = transFill; stroke = transStroke; }
+
+    svg += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="6" ry="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" data-state-index="' + p.idx + '" style="cursor:pointer;"/>';
+    svg += '<text x="' + (p.x + p.w / 2) + '" y="' + (p.y + p.h / 2 + 4) + '" fill="' + textFill + '" font-size="10" text-anchor="middle" pointer-events="none">' + esc(truncate(s.name, 22)) + '</text>';
   }
 
   svg += '</svg>';
@@ -745,7 +1068,7 @@ function applyFilter() {
   const query = document.getElementById('search').value.toLowerCase().trim();
   const sevFilter = document.getElementById('filter-severity').value;
   const reasonFilter = document.getElementById('filter-reason').value;
-  const hideNonMatch = document.getElementById('cb-hide').checked;
+  const hideNonMatch = document.getElementById('cb-hide').checked || !!activeChip;
   let matchCount = 0;
 
   // Filter alarm rows
@@ -755,6 +1078,7 @@ function applyFilter() {
     const searchable = aEl.dataset.searchable || '';
 
     let match = true;
+    if (activeChip && !alarmMatchesChip(alarm, activeChip)) match = false;
     if (query && searchable.indexOf(query) < 0) match = false;
     if (sevFilter) {
       if (sevFilter === 'Unresolved' && !isUnresolved(alarm)) match = false;
@@ -767,7 +1091,7 @@ function applyFilter() {
       aEl.classList.add(hideNonMatch ? 'hidden-filter' : 'dimmed');
     } else {
       matchCount++;
-      if (query || sevFilter || reasonFilter) expandParents(aEl);
+      if (query || sevFilter || reasonFilter || activeChip) expandParents(aEl);
     }
   }
 
@@ -776,13 +1100,14 @@ function applyFilter() {
     const searchable = mEl.dataset.searchable || '';
     let match = true;
 
+    // Chip filter
+    if (activeChip && !nodeMatchesChip(node, activeChip)) match = false;
+
     if (alarmsOnlyMode) {
-      // In alarms-only mode, only show modules with alarms
       if (countAlarms(node) === 0) match = false;
     }
 
     if (query && searchable.indexOf(query) < 0) {
-      // Check if any child alarms match
       const hasMatchingAlarm = allAlarmRows.some(a => {
         if (!isDescendant(node, a.alarm)) return false;
         const as = a.el.dataset.searchable || '';
@@ -794,13 +1119,14 @@ function applyFilter() {
     mEl.classList.remove('dimmed', 'hidden-filter');
     if (!match) {
       mEl.classList.add(hideNonMatch ? 'hidden-filter' : 'dimmed');
-    } else if (query || sevFilter || reasonFilter) {
+    } else if (query || sevFilter || reasonFilter || activeChip) {
       expandParents(mEl);
     }
   }
 
-  const filterActive = query || sevFilter || reasonFilter;
-  document.getElementById('match-count').textContent = filterActive ? matchCount + ' alarm' + (matchCount !== 1 ? 's' : '') + ' matched' : '';
+  const filterActive = query || sevFilter || reasonFilter || activeChip;
+  const chipLabel = activeChip ? (' [' + activeChip + ']') : '';
+  document.getElementById('match-count').textContent = filterActive ? matchCount + ' alarm' + (matchCount !== 1 ? 's' : '') + ' matched' + chipLabel : '';
 }
 
 function isDescendant(node, alarm) {
@@ -852,6 +1178,27 @@ function init() {
     document.getElementById('sidebar').classList.toggle('hidden');
   });
 
+  // Stat chip toggle filters
+  document.querySelectorAll('.stat-toggle').forEach(chip => {
+    chip.addEventListener('click', function() {
+      const chipVal = this.dataset.chip;
+      if (activeChip === chipVal) {
+        // Deactivate — clear filter
+        activeChip = null;
+        document.querySelectorAll('.stat-toggle').forEach(c => c.classList.remove('chip-active', 'chip-inactive'));
+      } else {
+        // Activate this chip
+        activeChip = chipVal;
+        document.querySelectorAll('.stat-toggle').forEach(c => {
+          c.classList.remove('chip-active', 'chip-inactive');
+          if (c.dataset.chip === chipVal) c.classList.add('chip-active');
+          else c.classList.add('chip-inactive');
+        });
+      }
+      applyFilter();
+    });
+  });
+
   document.getElementById('btn-close-detail').addEventListener('click', function() {
     document.getElementById('detail').classList.remove('visible');
     document.querySelectorAll('.node-row.selected').forEach(r => r.classList.remove('selected'));
@@ -876,7 +1223,43 @@ function init() {
 
 function debounce(fn, ms) { let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
-document.addEventListener('DOMContentLoaded', init);
+// ── Resizable panes ──
+function initResize() {
+  const sidebar = document.getElementById('sidebar');
+  const detail = document.getElementById('detail');
+  const handleSidebar = document.getElementById('resize-sidebar');
+  const handleDetail = document.getElementById('resize-detail');
+
+  function startDrag(handle, onMove) {
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      handle.classList.add('dragging');
+      document.body.classList.add('resizing');
+      function move(ev) { onMove(ev); }
+      function up() {
+        handle.classList.remove('dragging');
+        document.body.classList.remove('resizing');
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  }
+
+  startDrag(handleSidebar, function(e) {
+    const w = Math.max(180, Math.min(600, e.clientX));
+    sidebar.style.width = w + 'px';
+  });
+
+  startDrag(handleDetail, function(e) {
+    const mainRect = document.getElementById('main').getBoundingClientRect();
+    const w = Math.max(250, Math.min(900, mainRect.right - e.clientX));
+    detail.style.width = w + 'px';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() { init(); initResize(); });
 </script>
 </body>
 </html>

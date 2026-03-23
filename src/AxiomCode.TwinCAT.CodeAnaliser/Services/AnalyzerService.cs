@@ -75,6 +75,9 @@ public class AnalyzerService
         // Step 7: Extract IO mappings
         IoMappingParser.Extract(project);
 
+        // Step 7b: Distribute IO mappings to tree nodes
+        DistributeIoToTree(project);
+
         // Step 8: Build summary
         BuildSummary(project);
 
@@ -111,6 +114,56 @@ public class AnalyzerService
         s.IoPointCount = project.AllIoMappings.Count;
         s.UnresolvedTypeCount = project.UnresolvedTypes.Count;
         s.TreeDepth = CalcTreeDepth(project.ObjectTree, 0);
+    }
+
+    /// <summary>
+    /// Distribute IO mappings from the flat list to their matching tree nodes.
+    /// Matches by TypeName and its inheritance chain (e.g. CM_Axis extends CM_Axis_V5).
+    /// </summary>
+    private static void DistributeIoToTree(TcProject project)
+    {
+        // Build lookup: POU type name -> list of IO mappings
+        var ioByPou = new Dictionary<string, List<IoMapping>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var io in project.AllIoMappings)
+        {
+            var key = io.SourcePou ?? io.SourceGvl ?? "";
+            if (string.IsNullOrEmpty(key)) continue;
+            if (!ioByPou.ContainsKey(key))
+                ioByPou[key] = new List<IoMapping>();
+            ioByPou[key].Add(io);
+        }
+
+        // Walk tree and assign
+        void Walk(List<ObjectTreeNode> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                // Direct match on type name
+                if (!string.IsNullOrEmpty(node.TypeName) && ioByPou.TryGetValue(node.TypeName, out var direct))
+                    node.IoMappings.AddRange(direct);
+
+                // Also check inheritance chain types
+                if (project.POUs.TryGetValue(node.TypeName ?? "", out var pou))
+                {
+                    foreach (var ancestor in pou.InheritanceChain)
+                    {
+                        if (ioByPou.TryGetValue(ancestor, out var inherited))
+                        {
+                            foreach (var io in inherited)
+                            {
+                                if (!node.IoMappings.Any(existing =>
+                                    existing.VariableName == io.VariableName && existing.AtBinding == io.AtBinding))
+                                    node.IoMappings.Add(io);
+                            }
+                        }
+                    }
+                }
+
+                Walk(node.Children);
+            }
+        }
+
+        Walk(project.ObjectTree);
     }
 
     private static int CalcTreeDepth(List<ObjectTreeNode> nodes, int depth)

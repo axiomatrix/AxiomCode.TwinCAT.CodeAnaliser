@@ -27,13 +27,13 @@ public static class StateMachineExtractor
         if (project.POUs.TryGetValue(node.TypeName, out var pou))
         {
             var smVars = pou.AllVariables
-                .Where(v => v.DataType.Equals("DM_StateMachine", StringComparison.OrdinalIgnoreCase))
+                .Where(v => v.DataType.StartsWith("DM_StateMachine", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var smVar in smVars)
             {
                 var sm = new StateMachine { InstanceName = smVar.Name, OwnerPou = pou.Name };
-                ParseConstructorArgs(smVar, sm);
+                ParseConstructorArgs(smVar, sm, pou.AllVariables.Count > 0 ? pou.AllVariables : pou.Variables);
 
                 // Collect all method bodies
                 var bodies = new List<(string Method, string Body)>();
@@ -87,26 +87,47 @@ public static class StateMachineExtractor
             ExtractFromNode(child, project);
     }
 
-    private static void ParseConstructorArgs(TcVariable smVar, StateMachine sm)
+    private static void ParseConstructorArgs(TcVariable smVar, StateMachine sm, IReadOnlyList<TcVariable> allVars)
     {
         var args = smVar.ConstructorArgs;
+
+        // Fallback: if ConstructorArgs is empty but DataType contains constructor call
+        // (parser didn't separate them), extract from DataType
+        if (string.IsNullOrEmpty(args) && smVar.DataType.Contains("("))
+            args = smVar.DataType[smVar.DataType.IndexOf('(')..];
+
         if (string.IsNullOrEmpty(args)) return;
 
         var nameMatch = Regex.Match(args, @"'([^']+)'");
         if (nameMatch.Success) sm.DisplayName = nameMatch.Groups[1].Value;
 
-        var initMatch = Regex.Match(args, @"(?:InitialState\s*:=\s*)?(E_\w+\.\w+)");
-        if (initMatch.Success)
+        // Collect all enum refs from args
+        var allEnumRefs = new List<string>();
+        foreach (Match er in Regex.Matches(args, @"(E_\w+\.\w+)"))
+            allEnumRefs.Add(er.Groups[1].Value);
+
+        // Multi-line constructors: parser may have created separate variables for
+        // continuation lines like "InitialState" with DataType "= E_xxx.Inactive,"
+        // and "TransitionState" with DataType "= E_xxx.TransitionState)"
+        foreach (var v in allVars)
         {
-            sm.InitialState = initMatch.Groups[1].Value;
+            if (v == smVar) continue;
+            if (v.Name.Equals("InitialState", StringComparison.OrdinalIgnoreCase) ||
+                v.Name.Equals("TransitionState", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (Match er in Regex.Matches(v.DataType, @"(E_\w+\.\w+)"))
+                    allEnumRefs.Add(er.Groups[1].Value);
+            }
+        }
+
+        if (allEnumRefs.Count >= 1)
+        {
+            sm.InitialState = allEnumRefs[0];
             var dot = sm.InitialState.LastIndexOf('.');
             if (dot > 0) sm.EnumTypeName = sm.InitialState[..dot];
         }
-
-        // Find second enum ref for TransitionState
-        var enumRefs = Regex.Matches(args, @"(E_\w+\.\w+)");
-        if (enumRefs.Count >= 2)
-            sm.TransitionState = enumRefs[1].Groups[1].Value;
+        if (allEnumRefs.Count >= 2)
+            sm.TransitionState = allEnumRefs[1];
     }
 
     private static void ExtractFromBody(StateMachine sm, string smName, string methodName, string body)
