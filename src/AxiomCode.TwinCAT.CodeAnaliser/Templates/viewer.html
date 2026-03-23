@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TwinCAT Code Analyser</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f1a; --panel: #16162a; --panel-alt: #1a1a30; --border: #2d2d4e;
+  --text: #e0e0e0; --muted: #888; --accent: #a78bfa;
+  --um: #60a5fa; --em: #4ade80; --cm: #fb923c; --dm: #94a3b8;
+  --critical: #ef4444; --process: #f97316; --advisory: #eab308; --information: #22c55e; --unresolved: #6b7280;
+  --sidebar-w: 340px; --detail-w: 480px;
+}
+html, body { height: 100%; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 13px; overflow: hidden; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+#app { display: flex; flex-direction: column; height: 100vh; }
+#stats-bar { display: flex; gap: 6px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; min-height: 42px; }
+.stat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; background: var(--panel-alt); border: 1px solid var(--border); font-size: 12px; white-space: nowrap; }
+.stat-chip .stat-val { font-weight: 700; font-size: 14px; }
+.stat-chip.critical { border-color: var(--critical); }
+.stat-chip.critical .stat-val { color: var(--critical); }
+.stat-chip.process { border-color: var(--process); }
+.stat-chip.process .stat-val { color: var(--process); }
+.stat-chip.advisory { border-color: var(--advisory); }
+.stat-chip.advisory .stat-val { color: var(--advisory); }
+.stat-chip.info { border-color: var(--information); }
+.stat-chip.info .stat-val { color: var(--information); }
+.stat-chip.unresolved { border-color: var(--unresolved); }
+.stat-chip.unresolved .stat-val { color: var(--unresolved); }
+#project-name { font-weight: 700; font-size: 15px; color: var(--accent); margin-right: 12px; }
+
+#main { display: flex; flex: 1; overflow: hidden; }
+#sidebar { width: var(--sidebar-w); background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; flex-shrink: 0; transition: margin-left 0.2s; }
+#sidebar.hidden { margin-left: calc(var(--sidebar-w) * -1); }
+#center { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 300px; }
+#toolbar { display: flex; gap: 6px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+#tree-container { flex: 1; overflow: auto; padding: 8px 12px; }
+#detail { width: var(--detail-w); background: var(--panel); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; display: none; }
+#detail.visible { display: flex; flex-direction: column; }
+
+/* Buttons */
+.btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-alt); color: var(--text); cursor: pointer; font-size: 12px; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.btn-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 4px 8px; }
+.btn-close:hover { color: var(--text); }
+
+/* Inputs */
+input[type="text"], select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 12px; }
+input[type="text"] { width: 220px; }
+input[type="text"]::placeholder { color: var(--muted); }
+label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; color: var(--muted); }
+#match-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* Tree */
+.tree-node { margin-left: 16px; }
+.tree-node.root { margin-left: 0; }
+.node-row { display: flex; align-items: center; padding: 3px 6px; border-radius: 4px; cursor: pointer; gap: 4px; min-height: 26px; }
+.node-row:hover { background: rgba(167, 139, 250, 0.08); }
+.node-row.selected { background: rgba(167, 139, 250, 0.15); }
+.node-row.dimmed { opacity: 0.25; }
+.node-row.hidden-filter { display: none; }
+.toggle { width: 16px; text-align: center; font-size: 10px; color: var(--muted); flex-shrink: 0; user-select: none; }
+.node-icon { font-size: 14px; flex-shrink: 0; }
+.node-name { font-weight: 600; }
+.node-type { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.node-ref { font-style: italic; opacity: 0.6; }
+.alarm-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 9px; font-size: 10px; font-weight: 700; padding: 0 5px; margin-left: 4px; }
+.io-badge { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #2d3748; color: #a0aec0; margin-left: 4px; }
+
+/* Alarm nodes */
+.alarm-row { display: flex; align-items: center; padding: 3px 6px 3px 22px; border-radius: 4px; gap: 4px; min-height: 24px; border-left: 3px solid transparent; cursor: default; }
+.alarm-row:hover { background: rgba(167, 139, 250, 0.05); }
+.alarm-row.dimmed { opacity: 0.25; }
+.alarm-row.hidden-filter { display: none; }
+.sev-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; }
+.reason-tag { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+.alarm-cond { font-size: 12px; }
+.alarm-path { font-size: 10px; color: var(--muted); margin-left: 8px; }
+
+/* Layer colours */
+.layer-um { color: var(--um); }
+.layer-em { color: var(--em); }
+.layer-cm { color: var(--cm); }
+.layer-dm { color: var(--dm); }
+
+/* Severity colours */
+.sev-critical { background: var(--critical); color: #fff; }
+.sev-process { background: var(--process); color: #000; }
+.sev-advisory { background: var(--advisory); color: #000; }
+.sev-information { background: var(--information); color: #000; }
+.sev-unresolved, .sev-unknown { background: var(--unresolved); color: #fff; }
+.border-critical { border-left-color: var(--critical); }
+.border-process { border-left-color: var(--process); }
+.border-advisory { border-left-color: var(--advisory); }
+.border-information { border-left-color: var(--information); }
+.border-unresolved, .border-unknown { border-left-color: var(--unresolved); }
+
+.reason-baseclass { background: #4a3520; color: #fb923c; }
+.reason-nomethod { background: #3b2020; color: #f87171; }
+.reason-missing { background: #2d2040; color: #c084fc; }
+.reason-dead { background: #1a2030; color: #94a3b8; }
+
+/* Tooltip */
+.tooltip { position: fixed; z-index: 9999; background: #1e1e3a; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 12px; max-width: 420px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+.tooltip .tt-sev { font-weight: 700; margin-bottom: 4px; }
+.tooltip .tt-row { color: var(--muted); margin: 2px 0; }
+.tooltip .tt-row span { color: var(--text); }
+
+/* Detail panel */
+#detail-header { padding: 16px; border-bottom: 1px solid var(--border); }
+#detail-header h2 { font-size: 16px; margin-bottom: 4px; }
+#detail-header .detail-type { color: var(--muted); font-size: 12px; }
+#detail-header .detail-extends { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.layer-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; margin-left: 8px; }
+.layer-badge-um { background: rgba(96,165,250,0.2); color: var(--um); }
+.layer-badge-em { background: rgba(74,222,128,0.2); color: var(--em); }
+.layer-badge-cm { background: rgba(251,146,60,0.2); color: var(--cm); }
+.layer-badge-dm { background: rgba(148,163,184,0.2); color: var(--dm); }
+
+#detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab-btn { padding: 8px 14px; font-size: 12px; cursor: pointer; border: none; background: none; color: var(--muted); border-bottom: 2px solid transparent; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+#detail-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+/* Tables */
+.detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.detail-table th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; position: sticky; top: 0; background: var(--panel); }
+.detail-table td { padding: 5px 8px; border-bottom: 1px solid rgba(45,45,78,0.5); }
+.detail-table tr:hover td { background: rgba(167,139,250,0.05); }
+
+/* State machine */
+.sm-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; background: var(--panel-alt); }
+.sm-card-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.sm-card-body { padding: 12px; }
+.sm-svg-wrap { overflow: auto; margin-bottom: 8px; }
+.sm-code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; display: none; color: #c9d1d9; }
+.sm-code.visible { display: block; }
+
+/* Sidebar docs */
+.doc-section { margin-bottom: 20px; }
+.doc-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.doc-section p, .doc-section li { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.doc-section ul { padding-left: 18px; }
+.doc-section code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 11px; color: var(--accent); }
+.doc-badge { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.legend-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 12px; color: var(--muted); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3d3d5e; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Stats Bar -->
+  <div id="stats-bar">
+    <span id="project-name"></span>
+    <div class="stat-chip"><span class="stat-val" id="s-pou">-</span> POUs</div>
+    <div class="stat-chip"><span class="stat-val" id="s-dut">-</span> DUTs</div>
+    <div class="stat-chip"><span class="stat-val" id="s-gvl">-</span> GVLs</div>
+    <div class="stat-chip critical"><span class="stat-val" id="s-crit">-</span> Critical</div>
+    <div class="stat-chip process"><span class="stat-val" id="s-proc">-</span> Process</div>
+    <div class="stat-chip advisory"><span class="stat-val" id="s-adv">-</span> Advisory</div>
+    <div class="stat-chip info"><span class="stat-val" id="s-info">-</span> Info</div>
+    <div class="stat-chip unresolved"><span class="stat-val" id="s-unres">-</span> Unresolved</div>
+    <div class="stat-chip"><span class="stat-val" id="s-sm">-</span> State Machines</div>
+    <div class="stat-chip"><span class="stat-val" id="s-io">-</span> IO Points</div>
+  </div>
+
+  <div id="main">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <div class="doc-section">
+        <h3>Usage</h3>
+        <ul>
+          <li>Click a module node to open the detail panel on the right</li>
+          <li>Use the search box to filter by name, type, path, or alarm condition</li>
+          <li>Filter by severity or unresolved reason using the dropdowns</li>
+          <li>Hover over alarm nodes for full details in a tooltip</li>
+          <li>In the detail panel, switch tabs to view alarms, state machines, IO, etc.</li>
+          <li>Click a state in the SVG diagram to show its Structured Text code</li>
+        </ul>
+      </div>
+      <div class="doc-section">
+        <h3>ISA-88 Hierarchy</h3>
+        <p>The tree follows the ISA-88 physical model:</p>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--um)"></div> <strong>UM</strong> &mdash; Unit Module (top-level machine)</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--em)"></div> <strong>EM</strong> &mdash; Equipment Module (stations/subsystems)</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--cm)"></div> <strong>CM</strong> &mdash; Control Module (actuators/sensors)</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--dm)"></div> <strong>DM</strong> &mdash; Device Module (individual I/O)</div>
+        <p style="margin-top:8px;">Each layer owns its own alarms. Alarms propagate upward via <code>_AlarmsPresentXxx</code> flags from child modules to their parents.</p>
+      </div>
+      <div class="doc-section">
+        <h3>Alarm Severities</h3>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--critical)"></div> <strong>Critical</strong> &mdash; Machine stop, operator intervention required</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--process)"></div> <strong>Process</strong> &mdash; Process deviation, may self-recover</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--advisory)"></div> <strong>Advisory</strong> &mdash; Non-critical warning, logged for review</div>
+        <div class="legend-row"><div class="doc-badge" style="background:var(--information)"></div> <strong>Information</strong> &mdash; Status notification, no action needed</div>
+      </div>
+      <div class="doc-section">
+        <h3>DM_TriggeredLatch Alarms</h3>
+        <p>Each alarm is an instance of <code>DM_TriggeredLatch</code>. When the trigger condition becomes TRUE, the alarm latches active and remains until explicitly acknowledged by the operator (or auto-acknowledged if configured).</p>
+        <p style="margin-top:6px;">The <code>._Latched</code> variable is the live alarm state. The analyser reads the trigger condition and delay from the code body to populate the tree.</p>
+      </div>
+      <div class="doc-section">
+        <h3>Severity Determination</h3>
+        <p>Severity is determined by which <code>_AlarmsPresentXxx</code> method the alarm is raised in:</p>
+        <ul>
+          <li><code>_AlarmsPresentCritical</code> &rarr; Critical</li>
+          <li><code>_AlarmsPresentProcess</code> &rarr; Process</li>
+          <li><code>_AlarmsPresentAdvisory</code> &rarr; Advisory</li>
+          <li><code>_AlarmsPresentInformation</code> &rarr; Information</li>
+        </ul>
+        <p style="margin-top:6px;">If the alarm is not found in any of these methods, it is marked <strong>Unresolved</strong>.</p>
+      </div>
+      <div class="doc-section">
+        <h3>Unresolved Reasons</h3>
+        <div class="legend-row"><span class="reason-tag reason-baseclass">BASECLASS</span> Defined in base class, not overridden</div>
+        <div class="legend-row"><span class="reason-tag reason-nomethod">NO_METHOD</span> Module has no _AlarmsPresent method</div>
+        <div class="legend-row"><span class="reason-tag reason-missing">MISSING</span> Alarm not referenced in any severity method</div>
+        <div class="legend-row"><span class="reason-tag reason-dead">DEAD</span> Alarm declared but never triggered in code</div>
+      </div>
+      <div class="doc-section">
+        <h3>State Machines</h3>
+        <p>State machines use <code>DM_StateMachine</code> with a <code>CASE</code> on an ENUM type. Transitions are performed via <code>GotoState()</code>. The analyser extracts all states, their code bodies, and transitions between them.</p>
+        <p style="margin-top:6px;">In the SVG diagram: green = initial state, red = error/timeout state, grey = transition state. Click any state to view its Structured Text code.</p>
+      </div>
+      <div class="doc-section">
+        <h3>Zenon HMI Integration</h3>
+        <p>Alarm variables are mapped to Zenon via the <code>variablePath</code> field (e.g. <code>S0_Objects.Machine.ALM_xxx._Latched</code>). The alarm list export can generate a Zenon-compatible CSV for import into the HMI alarm system.</p>
+      </div>
+      <div class="doc-section">
+        <h3>Tree Symbols</h3>
+        <div class="legend-row">&#x1F4E6; Module (FB instance)</div>
+        <div class="legend-row">&#x1F517; Reference (pointer to another module)</div>
+        <div class="legend-row">&#x26A0;&#xFE0F; Alarm (DM_TriggeredLatch instance)</div>
+        <div class="legend-row"><span class="io-badge">IO</span> Module has I/O mappings</div>
+      </div>
+    </div>
+
+    <!-- Center -->
+    <div id="center">
+      <div id="toolbar">
+        <button class="btn" id="btn-sidebar" title="Toggle documentation sidebar">&#x2630; Docs</button>
+        <button class="btn" id="btn-expand">Expand All</button>
+        <button class="btn" id="btn-collapse">Collapse All</button>
+        <button class="btn" id="btn-alarms-only">Alarms Only</button>
+        <input type="text" id="search" placeholder="Search name, type, path, condition...">
+        <select id="filter-severity">
+          <option value="">All Severities</option>
+          <option value="Critical">Critical</option>
+          <option value="Process">Process</option>
+          <option value="Advisory">Advisory</option>
+          <option value="Information">Information</option>
+          <option value="Unresolved">Unresolved</option>
+        </select>
+        <select id="filter-reason">
+          <option value="">All Reasons</option>
+          <option value="None">None (Resolved)</option>
+          <option value="BaseClass">BaseClass</option>
+          <option value="NoMethod">NoMethod</option>
+          <option value="Missing">Missing</option>
+          <option value="Dead">Dead</option>
+        </select>
+        <label class="cb"><input type="checkbox" id="cb-hide"> Hide non-matching</label>
+        <span id="match-count"></span>
+      </div>
+      <div id="tree-container"></div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div id="detail">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div id="detail-header">
+          <h2 id="d-name"></h2>
+          <div class="detail-type" id="d-type"></div>
+          <div class="detail-extends" id="d-extends"></div>
+        </div>
+        <button class="btn-close" id="btn-close-detail">&times;</button>
+      </div>
+      <div id="detail-tabs">
+        <button class="tab-btn active" data-tab="alarms">Alarms</button>
+        <button class="tab-btn" data-tab="statemachines">State Machines</button>
+        <button class="tab-btn" data-tab="io">IO</button>
+      </div>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip" style="display:none;"></div>
+
+<script>
+const DATA = /*DATA_PLACEHOLDER*/{};
+
+// ── Helpers ──
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'className') e.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of children) { if (typeof c === 'string') e.appendChild(document.createTextNode(c)); else if (c) e.appendChild(c); }
+  return e;
+}
+function sevClass(s) { return 'sev-' + (s || 'unknown').toLowerCase(); }
+function borderClass(s) { return 'border-' + (s || 'unknown').toLowerCase(); }
+function layerClass(l) { return l ? 'layer-' + l.toLowerCase() : ''; }
+function layerBadgeClass(l) { return l ? 'layer-badge-' + l.toLowerCase() : ''; }
+function reasonTagClass(r) {
+  if (!r || r === 'None') return '';
+  const m = { BaseClass: 'reason-baseclass', NoMethod: 'reason-nomethod', Missing: 'reason-missing', Dead: 'reason-dead' };
+  return m[r] || 'reason-dead';
+}
+function reasonLabel(r) {
+  if (!r || r === 'None') return '';
+  const m = { BaseClass: 'BASECLASS', NoMethod: 'NO_METHOD', Missing: 'MISSING', Dead: 'DEAD' };
+  return m[r] || r.toUpperCase();
+}
+function countAlarms(node) {
+  let c = (node.alarms || []).length;
+  for (const ch of (node.children || [])) c += countAlarms(ch);
+  return c;
+}
+function alarmSevColor(s) {
+  const m = { Critical: '#ef4444', Process: '#f97316', Advisory: '#eab308', Information: '#22c55e' };
+  return m[s] || '#6b7280';
+}
+function isUnresolved(a) { return a.unresolvedReason && a.unresolvedReason !== 'None'; }
+function getSeverity(a) { return isUnresolved(a) ? 'Unresolved' : (a.severity || 'Unknown'); }
+
+// ── State ──
+let selectedNode = null;
+let allNodeRows = [];
+let allAlarmRows = [];
+let expandedSet = new Set();
+let alarmsOnlyMode = false;
+
+// ── Stats ──
+function renderStats() {
+  const s = DATA.summary || {};
+  document.getElementById('project-name').textContent = DATA.projectName || 'TwinCAT Analysis';
+  document.getElementById('s-pou').textContent = s.pouCount || 0;
+  document.getElementById('s-dut').textContent = s.dutCount || 0;
+  document.getElementById('s-gvl').textContent = s.gvlCount || 0;
+  document.getElementById('s-crit').textContent = s.criticalAlarms || 0;
+  document.getElementById('s-proc').textContent = s.processAlarms || 0;
+  document.getElementById('s-adv').textContent = s.advisoryAlarms || 0;
+  document.getElementById('s-info').textContent = s.informationAlarms || 0;
+  document.getElementById('s-unres').textContent = s.unresolvedAlarms || 0;
+  document.getElementById('s-sm').textContent = s.stateMachineCount || 0;
+  document.getElementById('s-io').textContent = s.ioPointCount || 0;
+  document.title = (DATA.projectName || 'TwinCAT') + ' - Code Analysis';
+}
+
+// ── Tree rendering ──
+function buildTree(nodes, container, depth) {
+  for (const node of nodes) {
+    const hasChildren = (node.children && node.children.length > 0) || (node.alarms && node.alarms.length > 0);
+    const nodeId = node.fullPath || (node.instanceName + '_' + depth);
+    const isExpanded = expandedSet.has(nodeId);
+    const ac = countAlarms(node);
+    const hasIo = node.ioMappings && node.ioMappings.length > 0;
+
+    const wrap = el('div', { className: 'tree-node' + (depth === 0 ? ' root' : '') });
+    wrap.dataset.nodeId = nodeId;
+
+    // Module row
+    const row = el('div', { className: 'node-row', 'data-searchable': [node.instanceName, node.typeName, node.fullPath, node.displayName].join(' ').toLowerCase() });
+    row.dataset.nodeId = nodeId;
+    row.dataset.nodeType = 'module';
+
+    const toggle = el('span', { className: 'toggle' }, hasChildren ? (isExpanded ? '\u25BC' : '\u25B6') : ' ');
+    const icon = el('span', { className: 'node-icon' }, node.isReference ? '\uD83D\uDD17' : '\uD83D\uDCE6');
+    const name = el('span', { className: 'node-name ' + layerClass(node.layer) + (node.isReference ? ' node-ref' : '') }, node.displayName || node.instanceName);
+    const type = el('span', { className: 'node-type' }, node.typeName || '');
+
+    row.appendChild(toggle);
+    row.appendChild(icon);
+    row.appendChild(name);
+    row.appendChild(type);
+
+    if (ac > 0) {
+      const badge = el('span', { className: 'alarm-count', style: { background: 'rgba(167,139,250,0.2)', color: 'var(--accent)' } }, String(ac));
+      row.appendChild(badge);
+    }
+    if (hasIo) {
+      row.appendChild(el('span', { className: 'io-badge' }, 'IO'));
+    }
+
+    // Click to select/toggle
+    row.addEventListener('click', (e) => {
+      if (e.target === toggle || e.target.closest('.toggle')) {
+        toggleNode(nodeId, wrap, toggle);
+      } else {
+        selectNode(node, row);
+        if (hasChildren && !isExpanded) toggleNode(nodeId, wrap, toggle);
+      }
+    });
+
+    wrap.appendChild(row);
+    allNodeRows.push({ el: row, node, depth });
+
+    // Children container
+    const childWrap = el('div', { style: { display: isExpanded ? 'block' : 'none' } });
+    childWrap.dataset.childrenOf = nodeId;
+
+    // Alarm children
+    if (node.alarms && node.alarms.length > 0) {
+      for (const alarm of node.alarms) {
+        const sev = getSeverity(alarm);
+        const aRow = el('div', {
+          className: 'alarm-row ' + borderClass(sev),
+          'data-searchable': [alarm.instanceName, alarm.variablePath, alarm.condition, sev].join(' ').toLowerCase()
+        });
+        aRow.dataset.severity = sev;
+        aRow.dataset.reason = alarm.unresolvedReason || 'None';
+
+        aRow.appendChild(el('span', { className: 'node-icon' }, '\u26A0\uFE0F'));
+        aRow.appendChild(el('span', { className: 'sev-badge ' + sevClass(sev) }, sev.substring(0, 4).toUpperCase()));
+        aRow.appendChild(el('span', { className: 'alarm-cond' }, alarm.condition || alarm.instanceName));
+
+        if (isUnresolved(alarm)) {
+          const rLabel = reasonLabel(alarm.unresolvedReason);
+          const rClass = reasonTagClass(alarm.unresolvedReason);
+          if (rLabel) aRow.appendChild(el('span', { className: 'reason-tag ' + rClass }, rLabel));
+        }
+
+        aRow.appendChild(el('span', { className: 'alarm-path' }, alarm.variablePath || ''));
+
+        // Tooltip events
+        aRow.addEventListener('mouseenter', (e) => showTooltip(e, alarm));
+        aRow.addEventListener('mousemove', moveTooltip);
+        aRow.addEventListener('mouseleave', hideTooltip);
+
+        childWrap.appendChild(aRow);
+        allAlarmRows.push({ el: aRow, alarm, parentNodeId: nodeId });
+      }
+    }
+
+    // Recurse children
+    if (node.children && node.children.length > 0) {
+      buildTree(node.children, childWrap, depth + 1);
+    }
+
+    if (hasChildren) wrap.appendChild(childWrap);
+    container.appendChild(wrap);
+  }
+}
+
+function toggleNode(nodeId, wrap, toggleEl) {
+  const children = wrap.querySelector('[data-children-of="' + nodeId + '"]');
+  if (!children) return;
+  const isOpen = children.style.display !== 'none';
+  children.style.display = isOpen ? 'none' : 'block';
+  toggleEl.textContent = isOpen ? '\u25B6' : '\u25BC';
+  if (isOpen) expandedSet.delete(nodeId); else expandedSet.add(nodeId);
+}
+
+function expandAll() {
+  document.querySelectorAll('[data-children-of]').forEach(el => el.style.display = 'block');
+  document.querySelectorAll('.toggle').forEach(el => { if (el.textContent.trim()) el.textContent = '\u25BC'; });
+  allNodeRows.forEach(r => { if (r.node && r.node.fullPath) expandedSet.add(r.node.fullPath); });
+}
+
+function collapseAll() {
+  document.querySelectorAll('[data-children-of]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.toggle').forEach(el => { if (el.textContent.trim()) el.textContent = '\u25B6'; });
+  expandedSet.clear();
+}
+
+function expandParents(element) {
+  let p = element.parentElement;
+  while (p) {
+    if (p.dataset && p.dataset.childrenOf) {
+      p.style.display = 'block';
+      const parentWrap = p.parentElement;
+      if (parentWrap) {
+        const tog = parentWrap.querySelector(':scope > .node-row .toggle');
+        if (tog) tog.textContent = '\u25BC';
+        const nid = parentWrap.dataset.nodeId;
+        if (nid) expandedSet.add(nid);
+      }
+    }
+    p = p.parentElement;
+  }
+}
+
+// ── Selection & Detail ──
+function selectNode(node, rowEl) {
+  document.querySelectorAll('.node-row.selected').forEach(r => r.classList.remove('selected'));
+  rowEl.classList.add('selected');
+  selectedNode = node;
+  showDetail(node);
+}
+
+function showDetail(node) {
+  const panel = document.getElementById('detail');
+  panel.classList.add('visible');
+  document.getElementById('d-name').textContent = node.displayName || node.instanceName;
+  const typeHtml = node.typeName || '';
+  const layerBadge = node.layer ? '<span class="layer-badge ' + layerBadgeClass(node.layer) + '">' + esc(node.layer) + '</span>' : '';
+  document.getElementById('d-type').innerHTML = esc(typeHtml) + layerBadge;
+  document.getElementById('d-extends').textContent = node.extendsChain || '';
+
+  // Reset tabs
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="alarms"]').classList.add('active');
+  renderDetailTab('alarms', node);
+}
+
+function renderDetailTab(tab, node) {
+  const body = document.getElementById('detail-body');
+  body.innerHTML = '';
+
+  if (tab === 'alarms') {
+    const alarms = node.alarms || [];
+    if (alarms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No alarms on this module.</p>'; return; }
+    const table = el('table', { className: 'detail-table' });
+    const thead = el('thead');
+    thead.innerHTML = '<tr><th>Name</th><th>Severity</th><th>Condition</th><th>Trigger</th><th>Delay</th><th>Reason</th></tr>';
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    for (const a of alarms) {
+      const sev = getSeverity(a);
+      const tr = el('tr');
+      tr.innerHTML =
+        '<td>' + esc(a.instanceName) + '</td>' +
+        '<td><span class="sev-badge ' + sevClass(sev) + '">' + esc(sev) + '</span></td>' +
+        '<td>' + esc(a.condition || '') + '</td>' +
+        '<td style="font-size:11px;color:var(--muted)">' + esc(a.triggerCondition || '') + '</td>' +
+        '<td>' + esc(a.triggerDelayMs ? (a.triggerDelayMs + 'ms') : '') + '</td>' +
+        '<td>' + (isUnresolved(a) ? '<span class="reason-tag ' + reasonTagClass(a.unresolvedReason) + '">' + reasonLabel(a.unresolvedReason) + '</span>' : '<span style="color:var(--information)">OK</span>') + '</td>';
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    body.appendChild(table);
+
+  } else if (tab === 'statemachines') {
+    const sms = node.stateMachines || [];
+    if (sms.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No state machines on this module.</p>'; return; }
+    for (const sm of sms) {
+      const card = el('div', { className: 'sm-card' });
+      const header = el('div', { className: 'sm-card-header' }, (sm.displayName || sm.instanceName) + ' (' + (sm.enumTypeName || '') + ')');
+      card.appendChild(header);
+      const cardBody = el('div', { className: 'sm-card-body' });
+
+      // SVG
+      const svgWrap = el('div', { className: 'sm-svg-wrap' });
+      svgWrap.innerHTML = renderStateMachineSVG(sm);
+      cardBody.appendChild(svgWrap);
+
+      // Code display area
+      const codeEl = el('pre', { className: 'sm-code' });
+      codeEl.id = 'sm-code-' + (sm.instanceName || Math.random().toString(36).slice(2));
+      cardBody.appendChild(codeEl);
+
+      card.appendChild(cardBody);
+      body.appendChild(card);
+
+      // Attach click handlers to state rects
+      svgWrap.querySelectorAll('[data-state-index]').forEach(rect => {
+        rect.style.cursor = 'pointer';
+        rect.addEventListener('click', () => {
+          const idx = parseInt(rect.dataset.stateIndex);
+          const state = (sm.states || [])[idx];
+          if (state) {
+            const visible = codeEl.classList.contains('visible') && codeEl.dataset.activeIdx === String(idx);
+            if (visible) {
+              codeEl.classList.remove('visible');
+            } else {
+              codeEl.textContent = '// State: ' + (state.name || '') + ' (Method: ' + (state.methodName || '') + ')\n\n' + (state.codeBody || '// No code body available');
+              codeEl.dataset.activeIdx = String(idx);
+              codeEl.classList.add('visible');
+            }
+          }
+        });
+      });
+    }
+
+  } else if (tab === 'io') {
+    const ios = node.ioMappings || [];
+    if (ios.length === 0) { body.innerHTML = '<p style="color:var(--muted);padding:20px;">No IO mappings on this module.</p>'; return; }
+    const table = el('table', { className: 'detail-table' });
+    const thead = el('thead');
+    thead.innerHTML = '<tr><th>Variable</th><th>Type</th><th>AT Address</th><th>Direction</th></tr>';
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    for (const io of ios) {
+      const tr = el('tr');
+      tr.innerHTML =
+        '<td>' + esc(io.variable || io.variableName || '') + '</td>' +
+        '<td>' + esc(io.type || io.dataType || '') + '</td>' +
+        '<td style="font-family:monospace;color:var(--accent)">' + esc(io.atAddress || io.address || '') + '</td>' +
+        '<td>' + esc(io.direction || '') + '</td>';
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    body.appendChild(table);
+  }
+}
+
+// ── State Machine SVG ──
+function renderStateMachineSVG(sm) {
+  const states = sm.states || [];
+  if (states.length === 0) return '<p style="color:var(--muted)">No states defined.</p>';
+
+  const cols = Math.min(4, states.length);
+  const rw = 140, rh = 40, gapX = 30, gapY = 50, padX = 20, padY = 30;
+  const totalW = cols * (rw + gapX) - gapX + padX * 2;
+  const rows = Math.ceil(states.length / cols);
+  const totalH = rows * (rh + gapY) - gapY + padY * 2 + 20;
+
+  // Position each state
+  const positions = states.map((s, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    return { x: padX + col * (rw + gapX), y: padY + row * (rh + gapY), w: rw, h: rh, state: s, idx: i };
+  });
+
+  let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalW + '" height="' + totalH + '" style="min-width:' + totalW + 'px;">';
+  svg += '<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#888"/></marker></defs>';
+
+  // Transitions (arrows)
+  const transitions = sm.transitions || [];
+  for (const t of transitions) {
+    const fromPos = positions.find(p => t.fromState && t.fromState.indexOf(p.state.name) >= 0);
+    const toPos = positions.find(p => t.toState && t.toState.indexOf(p.state.name) >= 0);
+    if (fromPos && toPos && fromPos !== toPos) {
+      const fx = fromPos.x + fromPos.w / 2, fy = fromPos.y + fromPos.h;
+      const tx = toPos.x + toPos.w / 2, ty = toPos.y;
+      // Simple line
+      let x1 = fx, y1 = fy, x2 = tx, y2 = ty;
+      // Adjust for same-row or backward
+      if (fromPos.y === toPos.y) {
+        // Same row: go right side
+        x1 = fromPos.x + fromPos.w; y1 = fromPos.y + fromPos.h / 2;
+        x2 = toPos.x; y2 = toPos.y + toPos.h / 2;
+      } else if (fy > ty) {
+        // Going upward
+        x1 = fromPos.x; y1 = fromPos.y + fromPos.h / 2;
+        x2 = toPos.x; y2 = toPos.y + toPos.h / 2;
+      }
+      svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#555" stroke-width="1.5" marker-end="url(#arrowhead)"/>';
+      if (t.timeoutValue) {
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        svg += '<text x="' + mx + '" y="' + (my - 4) + '" fill="#888" font-size="9" text-anchor="middle">' + esc(t.timeoutValue) + '</text>';
+      }
+    }
+  }
+
+  // State rectangles
+  for (const p of positions) {
+    const s = p.state;
+    let fill = '#1a1a35', stroke = '#3d3d5e';
+    if (s.isInitial) { fill = '#0a2e1a'; stroke = '#22c55e'; }
+    else if (s.isError || s.isTimeout) { fill = '#2e0a0a'; stroke = '#ef4444'; }
+    else if (s.isTransition) { fill = '#1a1a25'; stroke = '#666'; }
+
+    svg += '<rect x="' + p.x + '" y="' + p.y + '" width="' + p.w + '" height="' + p.h + '" rx="6" ry="6" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" data-state-index="' + p.idx + '"/>';
+    svg += '<text x="' + (p.x + p.w / 2) + '" y="' + (p.y + p.h / 2 + 4) + '" fill="#e0e0e0" font-size="11" text-anchor="middle" pointer-events="none">' + esc(truncate(s.name, 18)) + '</text>';
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
+function truncate(s, max) { return s && s.length > max ? s.substring(0, max - 1) + '\u2026' : (s || ''); }
+
+// ── Tooltip ──
+const tooltipEl = document.getElementById('tooltip');
+function showTooltip(e, alarm) {
+  const sev = getSeverity(alarm);
+  let html = '<div class="tt-sev" style="color:' + alarmSevColor(alarm.severity) + '">' + esc(sev) + ' Alarm</div>';
+  html += '<div class="tt-row">Name: <span>' + esc(alarm.instanceName) + '</span></div>';
+  html += '<div class="tt-row">Path: <span>' + esc(alarm.variablePath) + '</span></div>';
+  if (alarm.condition) html += '<div class="tt-row">Condition: <span>' + esc(alarm.condition) + '</span></div>';
+  if (alarm.triggerCondition) html += '<div class="tt-row">Trigger: <span>' + esc(alarm.triggerCondition) + '</span></div>';
+  if (alarm.triggerDelayMs) html += '<div class="tt-row">Delay: <span>' + alarm.triggerDelayMs + ' ms</span></div>';
+  if (isUnresolved(alarm)) {
+    html += '<div class="tt-row">Reason: <span class="reason-tag ' + reasonTagClass(alarm.unresolvedReason) + '">' + reasonLabel(alarm.unresolvedReason) + '</span></div>';
+    if (alarm.unresolvedReasonText) html += '<div class="tt-row" style="color:var(--muted);font-style:italic">' + esc(alarm.unresolvedReasonText) + '</div>';
+  }
+  tooltipEl.innerHTML = html;
+  tooltipEl.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e) { tooltipEl.style.left = (e.clientX + 14) + 'px'; tooltipEl.style.top = (e.clientY + 14) + 'px'; }
+function hideTooltip() { tooltipEl.style.display = 'none'; }
+
+// ── Filtering ──
+function applyFilter() {
+  const query = document.getElementById('search').value.toLowerCase().trim();
+  const sevFilter = document.getElementById('filter-severity').value;
+  const reasonFilter = document.getElementById('filter-reason').value;
+  const hideNonMatch = document.getElementById('cb-hide').checked;
+  let matchCount = 0;
+
+  // Filter alarm rows
+  for (const { el: aEl, alarm, parentNodeId } of allAlarmRows) {
+    const sev = getSeverity(alarm);
+    const reason = alarm.unresolvedReason || 'None';
+    const searchable = aEl.dataset.searchable || '';
+
+    let match = true;
+    if (query && searchable.indexOf(query) < 0) match = false;
+    if (sevFilter) {
+      if (sevFilter === 'Unresolved' && !isUnresolved(alarm)) match = false;
+      else if (sevFilter !== 'Unresolved' && sev !== sevFilter) match = false;
+    }
+    if (reasonFilter && reason !== reasonFilter) match = false;
+
+    aEl.classList.remove('dimmed', 'hidden-filter');
+    if (!match) {
+      aEl.classList.add(hideNonMatch ? 'hidden-filter' : 'dimmed');
+    } else {
+      matchCount++;
+      if (query || sevFilter || reasonFilter) expandParents(aEl);
+    }
+  }
+
+  // Filter module rows (match if name/type matches OR has matching alarm children)
+  for (const { el: mEl, node } of allNodeRows) {
+    const searchable = mEl.dataset.searchable || '';
+    let match = true;
+
+    if (alarmsOnlyMode) {
+      // In alarms-only mode, only show modules with alarms
+      if (countAlarms(node) === 0) match = false;
+    }
+
+    if (query && searchable.indexOf(query) < 0) {
+      // Check if any child alarms match
+      const hasMatchingAlarm = allAlarmRows.some(a => {
+        if (!isDescendant(node, a.alarm)) return false;
+        const as = a.el.dataset.searchable || '';
+        return as.indexOf(query) >= 0;
+      });
+      if (!hasMatchingAlarm) match = false;
+    }
+
+    mEl.classList.remove('dimmed', 'hidden-filter');
+    if (!match) {
+      mEl.classList.add(hideNonMatch ? 'hidden-filter' : 'dimmed');
+    } else if (query || sevFilter || reasonFilter) {
+      expandParents(mEl);
+    }
+  }
+
+  const filterActive = query || sevFilter || reasonFilter;
+  document.getElementById('match-count').textContent = filterActive ? matchCount + ' alarm' + (matchCount !== 1 ? 's' : '') + ' matched' : '';
+}
+
+function isDescendant(node, alarm) {
+  if (!node || !alarm) return false;
+  if (node.alarms && node.alarms.indexOf(alarm) >= 0) return true;
+  for (const ch of (node.children || [])) { if (isDescendant(ch, alarm)) return true; }
+  return false;
+}
+
+// ── Init ──
+function init() {
+  renderStats();
+
+  // Build tree
+  const container = document.getElementById('tree-container');
+  container.innerHTML = '';
+  allNodeRows = [];
+  allAlarmRows = [];
+  const tree = DATA.tree || [];
+  if (tree.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">No data available. Ensure JSON data is injected at the DATA_PLACEHOLDER.</p>';
+    return;
+  }
+
+  // Default: expand first two levels
+  function preExpand(nodes, d) {
+    for (const n of nodes) {
+      if (d < 2 && n.fullPath) expandedSet.add(n.fullPath);
+      if (n.children && d < 1) preExpand(n.children, d + 1);
+    }
+  }
+  preExpand(tree, 0);
+
+  buildTree(tree, container, 0);
+
+  // Toolbar buttons
+  document.getElementById('btn-expand').addEventListener('click', expandAll);
+  document.getElementById('btn-collapse').addEventListener('click', collapseAll);
+
+  document.getElementById('btn-alarms-only').addEventListener('click', function() {
+    alarmsOnlyMode = !alarmsOnlyMode;
+    this.classList.toggle('active', alarmsOnlyMode);
+    applyFilter();
+  });
+
+  document.getElementById('btn-sidebar').addEventListener('click', function() {
+    document.getElementById('sidebar').classList.toggle('hidden');
+  });
+
+  document.getElementById('btn-close-detail').addEventListener('click', function() {
+    document.getElementById('detail').classList.remove('visible');
+    document.querySelectorAll('.node-row.selected').forEach(r => r.classList.remove('selected'));
+    selectedNode = null;
+  });
+
+  // Filters
+  document.getElementById('search').addEventListener('input', debounce(applyFilter, 200));
+  document.getElementById('filter-severity').addEventListener('change', applyFilter);
+  document.getElementById('filter-reason').addEventListener('change', applyFilter);
+  document.getElementById('cb-hide').addEventListener('change', applyFilter);
+
+  // Detail tabs
+  document.getElementById('detail-tabs').addEventListener('click', function(e) {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn || !selectedNode) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderDetailTab(btn.dataset.tab, selectedNode);
+  });
+}
+
+function debounce(fn, ms) { let t; return function() { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
