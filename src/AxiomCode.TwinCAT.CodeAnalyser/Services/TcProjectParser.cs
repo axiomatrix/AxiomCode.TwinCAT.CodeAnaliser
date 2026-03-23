@@ -1,8 +1,8 @@
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Services;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 /// <summary>
 /// Discovers TwinCAT source files within a project directory

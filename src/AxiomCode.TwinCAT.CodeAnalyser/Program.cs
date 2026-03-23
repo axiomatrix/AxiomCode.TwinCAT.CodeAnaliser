@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using AxiomCode.TwinCAT.CodeAnaliser.Services;
+using AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 // ──────────────────────────────────────────────────────────────
 // Command-line handling
@@ -9,12 +9,12 @@ using AxiomCode.TwinCAT.CodeAnaliser.Services;
 
 if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "/?"))
 {
-    Console.WriteLine("AxiomCode.TwinCAT.CodeAnaliser — TwinCAT 3 Code Analysis MCP Server");
+    Console.WriteLine("AxiomCode.TwinCAT.CodeAnalyser — TwinCAT 3 Code Analysis MCP Server");
     Console.WriteLine();
     Console.WriteLine("Usage:");
-    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnaliser.exe               Run as MCP server");
-    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnaliser.exe --help        Show this help message");
-    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnaliser.exe --test <path> Run test analysis on a project");
+    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnalyser.exe               Run as MCP server");
+    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnalyser.exe --help        Show this help message");
+    Console.WriteLine("  AxiomCode.TwinCAT.CodeAnalyser.exe --test <path> Run test analysis on a project");
     Console.WriteLine();
     Console.WriteLine("MCP Tools:");
     Console.WriteLine("  twincat_analyze          Full project analysis");

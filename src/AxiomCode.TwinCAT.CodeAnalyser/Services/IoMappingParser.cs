@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Services;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 /// <summary>
 /// Extracts IO mappings (AT bindings) from all GVL and POU variables

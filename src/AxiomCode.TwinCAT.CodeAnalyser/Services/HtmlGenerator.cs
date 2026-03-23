@@ -1,9 +1,9 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Services;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 /// <summary>
 /// Generates a self-contained interactive HTML viewer from project analysis data.

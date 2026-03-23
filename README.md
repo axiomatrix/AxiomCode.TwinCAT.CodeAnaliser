@@ -1,4 +1,4 @@
-# AxiomCode.TwinCAT.CodeAnaliser
+# AxiomCode.TwinCAT.CodeAnalyser
 
 MCP (Model Context Protocol) server for analyzing TwinCAT 3 Structured Text codebases. Generates interactive HTML documentation with alarm analysis, state machine diagrams, and IO mapping.
 
@@ -31,7 +31,7 @@ Add to your Claude Code settings or `.mcp.json`:
 {
   "mcpServers": {
     "twincat-analyzer": {
-      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnaliser.exe"
+      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnalyser.exe"
     }
   }
 }
@@ -40,7 +40,7 @@ Add to your Claude Code settings or `.mcp.json`:
 ### Command Line (Test Mode)
 
 ```
-AxiomCode.TwinCAT.CodeAnaliser.exe --test <project_path> [output.html]
+AxiomCode.TwinCAT.CodeAnalyser.exe --test <project_path> [output.html]
 ```
 
 ### Build

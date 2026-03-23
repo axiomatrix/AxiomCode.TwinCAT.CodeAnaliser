@@ -1,4 +1,4 @@
-# AxiomCode.TwinCAT.CodeAnaliser — Help Guide
+# AxiomCode.TwinCAT.CodeAnalyser — Help Guide
 
 ## What This Tool Does
 
@@ -23,7 +23,7 @@ It can output results as JSON (via MCP tools) or as a self-contained interactive
 ### Building
 
 ```powershell
-cd D:\AXIOM-DATA\GITHUB\AxiomCode.TwinCAT.CodeAnaliser
+cd D:\AXIOM-DATA\GITHUB\AxiomCode.TwinCAT.CodeAnalyser
 .\build.ps1              # Debug build
 .\build.ps1 -Release     # Release build
 .\build.ps1 -Publish     # Self-contained executable
@@ -33,10 +33,10 @@ cd D:\AXIOM-DATA\GITHUB\AxiomCode.TwinCAT.CodeAnaliser
 
 ```powershell
 # Analyse a project and print summary
-AxiomCode.TwinCAT.CodeAnaliser.exe --test "D:\path\to\ABF PLC"
+AxiomCode.TwinCAT.CodeAnalyser.exe --test "D:\path\to\ABF PLC"
 
 # Analyse and generate HTML viewer
-AxiomCode.TwinCAT.CodeAnaliser.exe --test "D:\path\to\ABF PLC" "D:\output\analysis.html"
+AxiomCode.TwinCAT.CodeAnalyser.exe --test "D:\path\to\ABF PLC" "D:\output\analysis.html"
 ```
 
 ### Running as MCP Server
@@ -47,8 +47,8 @@ The server runs on **stdio** transport — it reads JSON-RPC from stdin and writ
 ```json
 {
   "mcpServers": {
-    "AxiomCode.TwinCAT.CodeAnaliser": {
-      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnaliser.exe",
+    "AxiomCode.TwinCAT.CodeAnalyser": {
+      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnalyser.exe",
       "args": []
     }
   }
@@ -59,8 +59,8 @@ The server runs on **stdio** transport — it reads JSON-RPC from stdin and writ
 ```json
 {
   "mcpServers": {
-    "AxiomCode.TwinCAT.CodeAnaliser": {
-      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnaliser.exe",
+    "AxiomCode.TwinCAT.CodeAnalyser": {
+      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnalyser.exe",
       "args": []
     }
   }
@@ -276,9 +276,9 @@ The analyzer caches results per project path within each session. Subsequent too
 
 | Item | Path |
 |------|------|
-| Executable (Debug) | `src\AxiomCode.TwinCAT.CodeAnaliser\bin\Debug\net8.0\AxiomCode.TwinCAT.CodeAnaliser.exe` |
-| Executable (Release) | `src\AxiomCode.TwinCAT.CodeAnaliser\bin\Release\net8.0\AxiomCode.TwinCAT.CodeAnaliser.exe` |
-| HTML Template | `src\AxiomCode.TwinCAT.CodeAnaliser\Templates\viewer.html` |
+| Executable (Debug) | `src\AxiomCode.TwinCAT.CodeAnalyser\bin\Debug\net8.0\AxiomCode.TwinCAT.CodeAnalyser.exe` |
+| Executable (Release) | `src\AxiomCode.TwinCAT.CodeAnalyser\bin\Release\net8.0\AxiomCode.TwinCAT.CodeAnalyser.exe` |
+| HTML Template | `src\AxiomCode.TwinCAT.CodeAnalyser\Templates\viewer.html` |
 | Claude Desktop Config | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Claude Code Config | `.mcp.json` in workspace root |
 
@@ -298,7 +298,7 @@ The analyzer caches results per project path within each session. Subsequent too
 
 ## Version
 
-- **Server:** AxiomCode.TwinCAT.CodeAnaliser v1.0.0
+- **Server:** AxiomCode.TwinCAT.CodeAnalyser v1.0.0
 - **Framework:** .NET 8.0
 - **MCP Protocol:** ModelContextProtocol v0.7.0-preview.1
 - **Author:** Axiotech Automation Ltd — systems@axiotech.co.uk

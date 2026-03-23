@@ -1,7 +1,7 @@
 using System.Xml.Linq;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Services;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 /// <summary>
 /// Parses TwinCAT .TcGVL files into <see cref="TcGvl"/> model objects.

@@ -2,10 +2,10 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ModelContextProtocol.Server;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
-using AxiomCode.TwinCAT.CodeAnaliser.Services;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Services;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Tools;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Tools;
 
 [McpServerToolType]
 public class AnalyzerTools

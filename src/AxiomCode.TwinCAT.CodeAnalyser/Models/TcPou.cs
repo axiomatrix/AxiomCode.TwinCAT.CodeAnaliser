@@ -1,4 +1,4 @@
-namespace AxiomCode.TwinCAT.CodeAnaliser.Models;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Models;
 
 public enum PouType
 {

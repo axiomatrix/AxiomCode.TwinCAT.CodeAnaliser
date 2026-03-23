@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using AxiomCode.TwinCAT.CodeAnaliser.Models;
+using AxiomCode.TwinCAT.CodeAnalyser.Models;
 
-namespace AxiomCode.TwinCAT.CodeAnaliser.Services;
+namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 /// <summary>
 /// Parses TwinCAT 3 .TcPOU XML files into <see cref="TcPou"/> model objects.

@@ -5,8 +5,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>AxiomCode.TwinCAT.CodeAnaliser</RootNamespace>
-    <AssemblyName>AxiomCode.TwinCAT.CodeAnaliser</AssemblyName>
+    <RootNamespace>AxiomCode.TwinCAT.CodeAnalyser</RootNamespace>
+    <AssemblyName>AxiomCode.TwinCAT.CodeAnalyser</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
