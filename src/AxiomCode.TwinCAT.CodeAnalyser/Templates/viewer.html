@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TwinCAT Code Analyser</title>
+<title>AxiomCode — TwinCAT Code Analyser</title>
+<link rel="icon" type="image/png" href="/*FAVICON_PLACEHOLDER*/">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root, [data-theme="dark"] {
@@ -187,11 +188,11 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 .sm-zoom-controls { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; z-index: 5; }
 .sm-zoom-btn { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; opacity: 0.7; }
 .sm-zoom-btn:hover { opacity: 1; border-color: var(--accent); }
-.sm-code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; display: none; line-height: 1.5; }
+.sm-code { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-top: 8px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; min-height: 100px; max-height: 60vh; height: 300px; overflow: auto; display: none; line-height: 1.5; resize: vertical; }
 .sm-code.visible { display: block; }
 
 /* Code blocks for methods/properties */
-.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow: auto; line-height: 1.5; margin-top: 8px; }
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; white-space: pre-wrap; word-break: break-all; min-height: 80px; max-height: 60vh; height: 300px; overflow: auto; line-height: 1.5; margin-top: 8px; resize: vertical; }
 .code-block .kw { color: var(--syn-keyword); font-weight: 600; }
 .code-block .str { color: var(--syn-string); }
 .code-block .cmt { color: var(--syn-comment); font-style: italic; }
@@ -272,13 +273,22 @@ label.cb { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
 .var-search::placeholder { color: var(--muted); }
 
 /* Sidebar docs */
-.doc-section { margin-bottom: 20px; }
-.doc-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.doc-section { margin-bottom: 4px; }
+.doc-section h3 { font-size: 13px; color: var(--accent); margin-bottom: 0; border-bottom: 1px solid var(--border); padding: 6px 0; }
 .doc-section p, .doc-section li { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .doc-section ul { padding-left: 18px; }
 .doc-section code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: 11px; color: var(--accent); }
+.collapsible .collapse-toggle { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+.collapsible .collapse-toggle::before { content: '\25BC'; font-size: 9px; transition: transform 0.15s; display: inline-block; width: 12px; }
+.collapsible.collapsed .collapse-toggle::before { transform: rotate(-90deg); }
+.collapsible .collapse-body { padding-top: 6px; }
+.collapsible.collapsed .collapse-body { display: none; }
 .doc-badge { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 .legend-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 12px; color: var(--muted); }
+.help-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.help-table td, .help-table th { padding: 2px 6px; color: var(--muted); text-align: left; }
+.help-table th { color: var(--text); font-weight: 600; border-bottom: 1px solid var(--border); }
+.help-table tr:hover { background: var(--hover-bg); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -307,6 +317,7 @@ body.resizing .resize-handle { pointer-events: auto !important; }
 <div id="app">
   <!-- Stats Bar -->
   <div id="stats-bar">
+    <img id="brand-logo" src="/*LOGO_PLACEHOLDER*/" alt="Axiotech" style="height:24px;margin-right:8px;vertical-align:middle;" onerror="this.style.display='none'">
     <span id="project-name"></span>
     <div class="stat-chip stat-toggle" data-chip="pou" title="Show POU list view"><span class="stat-val" id="s-pou">-</span> POUs</div>
     <div class="stat-chip stat-toggle" data-chip="dut" title="Show DUT list view"><span class="stat-val" id="s-dut">-</span> DUTs</div>
@@ -323,73 +334,53 @@ body.resizing .resize-handle { pointer-events: auto !important; }
   <div id="main">
     <!-- Sidebar -->
     <div id="sidebar">
-      <div class="doc-section">
-        <h3>Usage</h3>
-        <ul>
-          <li>Click a module node to open the detail panel on the right</li>
-          <li>Use the search box to filter by name, type, path, or alarm condition</li>
-          <li>Filter by severity or unresolved reason using the dropdowns</li>
-          <li>Hover over alarm nodes for full details in a tooltip</li>
-          <li>In the detail panel, switch tabs to view alarms, state machines, IO, etc.</li>
-          <li>Click a state in the SVG diagram to show its Structured Text code</li>
-          <li>Use the view switcher to browse POUs, DUTs, and GVLs</li>
-          <li>Click stat chips to switch views or filter the tree</li>
-        </ul>
+      <div class="doc-section collapsible" id="doc-project-overview">
+        <h3 class="collapse-toggle">Project Overview</h3>
+        <div class="collapse-body" id="project-help-content"></div>
       </div>
-      <div class="doc-section">
-        <h3>ISA-88 Hierarchy</h3>
-        <p>The tree follows the ISA-88 physical model:</p>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--um)"></div> <strong>UM</strong> &mdash; Unit Module (top-level machine)</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--em)"></div> <strong>EM</strong> &mdash; Equipment Module (stations/subsystems)</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--cm)"></div> <strong>CM</strong> &mdash; Control Module (actuators/sensors)</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--dm)"></div> <strong>DM</strong> &mdash; Device Module (individual I/O)</div>
-        <p style="margin-top:8px;">Each layer owns its own alarms. Alarms propagate upward via <code>_AlarmsPresentXxx</code> flags from child modules to their parents.</p>
+      <div class="doc-section collapsible" id="doc-top-modules">
+        <h3 class="collapse-toggle">Largest Modules</h3>
+        <div class="collapse-body" id="top-modules-help-content"></div>
       </div>
-      <div class="doc-section">
-        <h3>Alarm Severities</h3>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--critical)"></div> <strong>Critical</strong> &mdash; Machine stop, operator intervention required</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--process)"></div> <strong>Process</strong> &mdash; Process deviation, may self-recover</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--advisory)"></div> <strong>Advisory</strong> &mdash; Non-critical warning, logged for review</div>
-        <div class="legend-row"><div class="doc-badge" style="background:var(--information)"></div> <strong>Information</strong> &mdash; Status notification, no action needed</div>
+      <div class="doc-section collapsible" id="doc-inheritance">
+        <h3 class="collapse-toggle">Inheritance Chains</h3>
+        <div class="collapse-body" id="inheritance-help-content"></div>
       </div>
-      <div class="doc-section">
-        <h3>DM_TriggeredLatch Alarms</h3>
-        <p>Each alarm is an instance of <code>DM_TriggeredLatch</code>. When the trigger condition becomes TRUE, the alarm latches active and remains until explicitly acknowledged by the operator (or auto-acknowledged if configured).</p>
-        <p style="margin-top:6px;">The <code>._Latched</code> variable is the live alarm state. The analyser reads the trigger condition and delay from the code body to populate the tree.</p>
+      <div class="doc-section collapsible" id="doc-unresolved">
+        <h3 class="collapse-toggle">Unresolved Types</h3>
+        <div class="collapse-body" id="unresolved-help-content"></div>
       </div>
-      <div class="doc-section">
-        <h3>Severity Determination</h3>
-        <p>Severity is determined by which <code>_AlarmsPresentXxx</code> method the alarm is raised in:</p>
-        <ul>
-          <li><code>_AlarmsPresentCritical</code> &rarr; Critical</li>
-          <li><code>_AlarmsPresentProcess</code> &rarr; Process</li>
-          <li><code>_AlarmsPresentAdvisory</code> &rarr; Advisory</li>
-          <li><code>_AlarmsPresentInformation</code> &rarr; Information</li>
-        </ul>
-        <p style="margin-top:6px;">If the alarm is not found in any of these methods, it is marked <strong>Unresolved</strong>.</p>
+      <div class="doc-section collapsible collapsed">
+        <h3 class="collapse-toggle">Legend</h3>
+        <div class="collapse-body">
+          <div class="legend-row"><div class="doc-badge" style="background:var(--um)"></div> <strong>UM</strong> Unit Module</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--em)"></div> <strong>EM</strong> Equipment Module</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--cm)"></div> <strong>CM</strong> Control Module</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--dm)"></div> <strong>DM</strong> Device Module</div>
+          <div style="margin-top:6px;"></div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--critical)"></div> Critical</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--process)"></div> Process</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--advisory)"></div> Advisory</div>
+          <div class="legend-row"><div class="doc-badge" style="background:var(--information)"></div> Information</div>
+          <div style="margin-top:6px;"></div>
+          <div class="legend-row"><span class="reason-tag reason-baseclass">BASECLASS</span> In base class</div>
+          <div class="legend-row"><span class="reason-tag reason-nomethod">NO_METHOD</span> No _AlarmsPresent</div>
+          <div class="legend-row"><span class="reason-tag reason-missing">MISSING</span> Not in any method</div>
+          <div class="legend-row"><span class="reason-tag reason-dead">DEAD</span> Never triggered</div>
+          <div style="margin-top:6px;"></div>
+          <div class="legend-row">&#x1F4E6; Module &nbsp; &#x1F517; Reference &nbsp; &#x26A0;&#xFE0F; Alarm &nbsp; <span class="io-badge">IO</span></div>
+        </div>
       </div>
-      <div class="doc-section">
-        <h3>Unresolved Reasons</h3>
-        <div class="legend-row"><span class="reason-tag reason-baseclass">BASECLASS</span> Defined in base class, not overridden</div>
-        <div class="legend-row"><span class="reason-tag reason-nomethod">NO_METHOD</span> Module has no _AlarmsPresent method</div>
-        <div class="legend-row"><span class="reason-tag reason-missing">MISSING</span> Alarm not referenced in any severity method</div>
-        <div class="legend-row"><span class="reason-tag reason-dead">DEAD</span> Alarm declared but never triggered in code</div>
+      <div class="doc-section collapsible collapsed">
+        <h3 class="collapse-toggle">Quick Help</h3>
+        <div class="collapse-body">
+          <p>Click modules to inspect. Use stat chips to filter. Hover alarms for detail. Click SM states for code.</p>
+          <p style="margin-top:4px;">SVG colours: <span style="color:#22c55e;">green</span> = initial, <span style="color:#ef4444;">red</span> = error, <span style="color:#94a3b8;">grey</span> = transition.</p>
+        </div>
       </div>
-      <div class="doc-section">
-        <h3>State Machines</h3>
-        <p>State machines use <code>DM_StateMachine</code> with a <code>CASE</code> on an ENUM type. Transitions are performed via <code>GotoState()</code>. The analyser extracts all states, their code bodies, and transitions between them.</p>
-        <p style="margin-top:6px;">In the SVG diagram: green = initial state, red = error/timeout state, grey = transition state. Click any state to view its Structured Text code.</p>
-      </div>
-      <div class="doc-section">
-        <h3>Zenon HMI Integration</h3>
-        <p>Alarm variables are mapped to Zenon via the <code>variablePath</code> field (e.g. <code>S0_Objects.Machine.ALM_xxx._Latched</code>). The alarm list export can generate a Zenon-compatible CSV for import into the HMI alarm system.</p>
-      </div>
-      <div class="doc-section">
-        <h3>Tree Symbols</h3>
-        <div class="legend-row">&#x1F4E6; Module (FB instance)</div>
-        <div class="legend-row">&#x1F517; Reference (pointer to another module)</div>
-        <div class="legend-row">&#x26A0;&#xFE0F; Alarm (DM_TriggeredLatch instance)</div>
-        <div class="legend-row"><span class="io-badge">IO</span> Module has I/O mappings</div>
+      <div class="doc-section collapsible collapsed" id="doc-generation">
+        <h3 class="collapse-toggle">Generation Info</h3>
+        <div class="collapse-body" id="generation-help-content"></div>
       </div>
     </div>
 
@@ -675,6 +666,7 @@ let allAlarmRows = [];
 let allFlatItems = [];
 let expandedSet = new Set();
 let alarmsOnlyMode = false;
+let showAlarmsInTree = false;
 let activeChip = null;
 let currentView = 'tree';
 let currentDetailType = null; // 'tree', 'pou', 'dut', 'gvl'
@@ -693,7 +685,139 @@ function renderStats() {
   document.getElementById('s-unres').textContent = s.unresolvedAlarms || 0;
   document.getElementById('s-sm').textContent = s.stateMachineCount || 0;
   document.getElementById('s-io').textContent = s.ioPointCount || 0;
-  document.title = (DATA.projectName || 'TwinCAT') + ' - Code Analysis';
+  document.title = (DATA.projectName || 'TwinCAT') + ' \u2014 Code Analysis';
+
+  // Update Alarms Only button with total count
+  const totalAlarms = s.totalAlarms || (s.criticalAlarms||0) + (s.processAlarms||0) + (s.advisoryAlarms||0) + (s.informationAlarms||0) + (s.unresolvedAlarms||0);
+  const alarmsBtn = document.getElementById('btn-alarms-only');
+  if (alarmsBtn) alarmsBtn.textContent = 'Alarms Only (' + totalAlarms + ')';
+}
+
+// ── Dynamic Help ──
+function renderDynamicHelp() {
+  const s = DATA.summary || {};
+  const pous = DATA.pous || [];
+  const duts = DATA.duts || [];
+  const gvls = DATA.gvls || [];
+  const alarms = DATA.alarms || [];
+  const sms = DATA.stateMachines || [];
+  const ios = DATA.ioMappings || [];
+  const tree = DATA.tree || [];
+  const unresTypes = DATA.unresolvedTypes || [];
+
+  // Project Overview
+  const pouTypes = {};
+  pous.forEach(p => { pouTypes[p.pouType] = (pouTypes[p.pouType] || 0) + 1; });
+  const dutTypes = {};
+  duts.forEach(d => { dutTypes[d.dutType || 'Unknown'] = (dutTypes[d.dutType || 'Unknown'] || 0) + 1; });
+
+  let totalVars = 0, totalMethods = 0, totalProps = 0;
+  pous.forEach(p => {
+    totalVars += (p.variables || []).length + (p.inheritedVariables || []).length;
+    totalMethods += (p.methods || []).length;
+    totalProps += (p.properties || []).length;
+  });
+
+  const layerCounts = { UM: 0, EM: 0, CM: 0, DM: 0, Other: 0 };
+  function countLayers(nodes) {
+    if (!nodes) return;
+    nodes.forEach(n => {
+      const l = (n.layer || '').toUpperCase();
+      if (layerCounts[l] !== undefined) layerCounts[l]++;
+      else layerCounts.Other++;
+      countLayers(n.children);
+    });
+  }
+  countLayers(tree);
+
+  let overviewHtml = '<table class="help-table">';
+  overviewHtml += '<tr><td>Project</td><td><strong>' + esc(DATA.projectName) + '</strong></td></tr>';
+  overviewHtml += '<tr><td>Analysis Date</td><td>' + new Date(DATA.analysisDate).toLocaleString() + '</td></tr>';
+  overviewHtml += '<tr><td>Tree Depth</td><td>' + (s.treeDepth || '-') + ' levels</td></tr>';
+  overviewHtml += '<tr><td colspan="2" style="padding-top:8px;font-weight:600;">POU Breakdown</td></tr>';
+  Object.entries(pouTypes).sort((a,b) => b[1] - a[1]).forEach(([t, c]) => {
+    overviewHtml += '<tr><td style="padding-left:12px;">' + esc(t) + '</td><td>' + c + '</td></tr>';
+  });
+  overviewHtml += '<tr><td colspan="2" style="padding-top:8px;font-weight:600;">DUT Breakdown</td></tr>';
+  Object.entries(dutTypes).sort((a,b) => b[1] - a[1]).forEach(([t, c]) => {
+    overviewHtml += '<tr><td style="padding-left:12px;">' + esc(t) + '</td><td>' + c + '</td></tr>';
+  });
+  overviewHtml += '<tr><td colspan="2" style="padding-top:8px;font-weight:600;">ISA-88 Instance Count</td></tr>';
+  Object.entries(layerCounts).filter(([,c]) => c > 0).forEach(([l, c]) => {
+    overviewHtml += '<tr><td style="padding-left:12px;" class="layer-' + l.toLowerCase() + '">' + l + '</td><td>' + c + '</td></tr>';
+  });
+  overviewHtml += '<tr><td colspan="2" style="padding-top:8px;font-weight:600;">Code Statistics</td></tr>';
+  overviewHtml += '<tr><td style="padding-left:12px;">Variables</td><td>' + totalVars + '</td></tr>';
+  overviewHtml += '<tr><td style="padding-left:12px;">Methods</td><td>' + totalMethods + '</td></tr>';
+  overviewHtml += '<tr><td style="padding-left:12px;">Properties</td><td>' + totalProps + '</td></tr>';
+  overviewHtml += '<tr><td style="padding-left:12px;">IO Points</td><td>' + ios.length + ' (' + ios.filter(x=>x.direction==='Input').length + ' IN / ' + ios.filter(x=>x.direction==='Output').length + ' OUT / ' + ios.filter(x=>x.direction==='Memory').length + ' MEM)</td></tr>';
+  overviewHtml += '</table>';
+  document.getElementById('project-help-content').innerHTML = overviewHtml;
+
+  // Inheritance chains
+  const chains = {};
+  pous.filter(p => p.extendsType).forEach(p => {
+    const chain = (p.inheritanceChain || [p.extendsType, p.name]).join(' \u2192 ');
+    const base = (p.inheritanceChain || [p.extendsType])[0];
+    if (!chains[base]) chains[base] = [];
+    chains[base].push({ name: p.name, chain });
+  });
+  let inhHtml = '';
+  Object.entries(chains).sort((a,b) => b[1].length - a[1].length).forEach(([base, members]) => {
+    inhHtml += '<div style="margin-bottom:6px;"><strong>' + esc(base) + '</strong> <span style="color:var(--muted);">(' + members.length + ' derived)</span>';
+    inhHtml += '<div style="padding-left:12px;font-size:11px;color:var(--muted);">';
+    members.slice(0, 10).forEach(m => {
+      inhHtml += '<div>' + esc(m.chain) + '</div>';
+    });
+    if (members.length > 10) inhHtml += '<div>... and ' + (members.length - 10) + ' more</div>';
+    inhHtml += '</div></div>';
+  });
+  document.getElementById('inheritance-help-content').innerHTML = inhHtml || '<p style="color:var(--muted);">No inheritance detected.</p>';
+
+  // Unresolved types
+  let unresHtml = '';
+  if (unresTypes.length > 0) {
+    unresHtml = '<p style="margin-bottom:6px;">These types are referenced in code but could not be resolved to a POU or DUT in the project:</p><ul>';
+    unresTypes.forEach(t => { unresHtml += '<li><code>' + esc(t) + '</code></li>'; });
+    unresHtml += '</ul><p style="margin-top:6px;color:var(--muted);font-size:11px;">They may be in external libraries (Tc2_Standard, Tc2_MC2, etc.) or missing from the project.</p>';
+  } else {
+    unresHtml = '<p style="color:var(--muted);">All types resolved successfully.</p>';
+  }
+  document.getElementById('unresolved-help-content').innerHTML = unresHtml;
+
+  // Top modules by alarm count
+  const modAlarms = [];
+  function collectModAlarms(nodes, path) {
+    if (!nodes) return;
+    nodes.forEach(n => {
+      const fp = path ? path + '.' + n.instanceName : n.instanceName;
+      const ownAlarms = (n.alarms || []).length;
+      if (ownAlarms > 0) modAlarms.push({ name: n.instanceName, type: n.typeName, path: fp, count: ownAlarms });
+      collectModAlarms(n.children, fp);
+    });
+  }
+  collectModAlarms(tree, '');
+  modAlarms.sort((a, b) => b.count - a.count);
+
+  let topHtml = '<table class="help-table">';
+  topHtml += '<tr><th>Module</th><th>Type</th><th>Alarms</th></tr>';
+  modAlarms.slice(0, 15).forEach(m => {
+    topHtml += '<tr><td>' + esc(m.name) + '</td><td style="color:var(--muted);font-size:11px;">' + esc(m.type) + '</td><td>' + m.count + '</td></tr>';
+  });
+  topHtml += '</table>';
+  if (modAlarms.length > 15) topHtml += '<p style="color:var(--muted);font-size:11px;">Showing top 15 of ' + modAlarms.length + ' modules with alarms.</p>';
+  document.getElementById('top-modules-help-content').innerHTML = topHtml;
+
+  // Generation info
+  let genHtml = '<table class="help-table">';
+  genHtml += '<tr><td>Generated by</td><td>AxiomCode TwinCAT Code Analyser</td></tr>';
+  genHtml += '<tr><td>Analysis date</td><td>' + new Date(DATA.analysisDate).toLocaleString() + '</td></tr>';
+  genHtml += '<tr><td>Total alarms</td><td>' + alarms.length + '</td></tr>';
+  genHtml += '<tr><td>State machines</td><td>' + sms.length + '</td></tr>';
+  genHtml += '<tr><td>Alarm coverage</td><td>' + (alarms.length > 0 ? Math.round((alarms.length - (s.unresolvedAlarms || 0)) / alarms.length * 100) : 0) + '% resolved</td></tr>';
+  genHtml += '</table>';
+  genHtml += '<p style="margin-top:8px;color:var(--muted);font-size:11px;">\u00A9 Axiotech Automation Ltd. This document is auto-generated from the TwinCAT 3 Structured Text source code.</p>';
+  document.getElementById('generation-help-content').innerHTML = genHtml;
 }
 
 // ── View Mode Switching ──
@@ -1973,6 +2097,13 @@ function applyFilter() {
     const reason = alarm.unresolvedReason || 'None';
     const searchable = aEl.dataset.searchable || '';
 
+    // Hide all alarm rows unless alarms are enabled via chip/filter/alarmsOnly
+    if (!showAlarmsInTree) {
+      aEl.classList.remove('dimmed');
+      aEl.classList.add('hidden-filter');
+      continue;
+    }
+
     let match = true;
     if (activeChip && !alarmMatchesChip(alarm, activeChip)) match = false;
     if (query && searchable.indexOf(query) < 0) match = false;
@@ -2054,6 +2185,7 @@ function isDescendant(node, alarm) {
 function init() {
   buildLookups();
   renderStats();
+  renderDynamicHelp();
 
   const container = document.getElementById('tree-container');
   container.innerHTML = '';
@@ -2075,6 +2207,7 @@ function init() {
     }
     preExpand(tree, 0);
     buildTree(tree, container, 0);
+    applyFilter();
   } else {
     // No tree data but have POUs — switch to POU view
     setViewMode('pous');
@@ -2086,6 +2219,7 @@ function init() {
 
   document.getElementById('btn-alarms-only').addEventListener('click', function() {
     alarmsOnlyMode = !alarmsOnlyMode;
+    showAlarmsInTree = alarmsOnlyMode;
     this.classList.toggle('active', alarmsOnlyMode);
     applyFilter();
   });
@@ -2094,6 +2228,13 @@ function init() {
 
   document.getElementById('btn-sidebar').addEventListener('click', function() {
     document.getElementById('sidebar').classList.toggle('hidden');
+  });
+
+  // Collapsible sidebar sections
+  document.querySelectorAll('.collapse-toggle').forEach(h => {
+    h.addEventListener('click', function() {
+      this.closest('.collapsible').classList.toggle('collapsed');
+    });
   });
 
   // View switcher
@@ -2131,11 +2272,15 @@ function init() {
       // Severity/SM/IO chips filter the tree
       if (currentView !== 'tree') setViewMode('tree');
 
+      const alarmChips = ['Critical', 'Process', 'Advisory', 'Information', 'Unresolved'];
+
       if (activeChip === chipVal) {
         activeChip = null;
+        showAlarmsInTree = false;
         document.querySelectorAll('.stat-toggle').forEach(c => c.classList.remove('chip-active', 'chip-inactive'));
       } else {
         activeChip = chipVal;
+        showAlarmsInTree = alarmChips.includes(chipVal);
         document.querySelectorAll('.stat-toggle').forEach(c => {
           c.classList.remove('chip-active', 'chip-inactive');
           if (c.dataset.chip === chipVal) c.classList.add('chip-active');
@@ -2159,8 +2304,14 @@ function init() {
 
   // Filters
   document.getElementById('search').addEventListener('input', debounce(applyFilter, 200));
-  document.getElementById('filter-severity').addEventListener('change', applyFilter);
-  document.getElementById('filter-reason').addEventListener('change', applyFilter);
+  document.getElementById('filter-severity').addEventListener('change', function() {
+    showAlarmsInTree = !!this.value;
+    applyFilter();
+  });
+  document.getElementById('filter-reason').addEventListener('change', function() {
+    showAlarmsInTree = !!this.value;
+    applyFilter();
+  });
   document.getElementById('cb-hide').addEventListener('change', applyFilter);
 
   // Detail tabs

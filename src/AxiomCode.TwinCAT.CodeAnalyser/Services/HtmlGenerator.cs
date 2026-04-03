@@ -68,6 +68,9 @@ public static class HtmlGenerator
         // Inject JSON into template, replacing the entire placeholder including fallback braces
         var html = template.Replace("/*DATA_PLACEHOLDER*/{}", json);
 
+        // Inject branding logos as base64
+        html = InjectBranding(html);
+
         // Ensure output directory exists
         var dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
@@ -107,5 +110,42 @@ public static class HtmlGenerator
 
         throw new FileNotFoundException(
             "Could not find viewer.html template. Ensure it is embedded as a resource or in the Templates directory.");
+    }
+
+    private static string InjectBranding(string html)
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+
+        // Inject logo placeholder
+        var logoResource = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("company_logo.png"));
+        if (logoResource != null)
+        {
+            using var stream = assembly.GetManifestResourceStream(logoResource);
+            if (stream != null)
+            {
+                var bytes = new byte[stream.Length];
+                stream.Read(bytes, 0, bytes.Length);
+                var b64 = Convert.ToBase64String(bytes);
+                html = html.Replace("/*LOGO_PLACEHOLDER*/", $"data:image/png;base64,{b64}");
+            }
+        }
+
+        // Inject favicon placeholder
+        var faviconResource = assembly.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("favicon.png"));
+        if (faviconResource != null)
+        {
+            using var stream = assembly.GetManifestResourceStream(faviconResource);
+            if (stream != null)
+            {
+                var bytes = new byte[stream.Length];
+                stream.Read(bytes, 0, bytes.Length);
+                var b64 = Convert.ToBase64String(bytes);
+                html = html.Replace("/*FAVICON_PLACEHOLDER*/", $"data:image/png;base64,{b64}");
+            }
+        }
+
+        return html;
     }
 }

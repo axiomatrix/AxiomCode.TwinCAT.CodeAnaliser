@@ -34,4 +34,11 @@ public class AlarmInfo
     public string? TriggerCondition { get; set; }
     public int? TriggerDelayMs { get; set; }
     public string Condition { get; set; } = "";
+
+    /// <summary>
+    /// True if this alarm was found in a POU definition that is NOT instantiated
+    /// in the object tree. These are alarm definitions from templates, base classes,
+    /// or FBs not yet wired into the machine hierarchy.
+    /// </summary>
+    public bool IsDefinitionOnly { get; set; } = false;
 }

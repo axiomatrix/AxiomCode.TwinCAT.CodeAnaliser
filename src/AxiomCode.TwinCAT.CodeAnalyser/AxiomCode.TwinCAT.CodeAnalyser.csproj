@@ -10,12 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" Version="0.7.0-preview.1" />
+    <PackageReference Include="ModelContextProtocol" Version="1.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Templates\viewer.html" />
+    <EmbeddedResource Include="Templates\company_logo.png" />
+    <EmbeddedResource Include="Templates\favicon.png" />
   </ItemGroup>
 
 </Project>
