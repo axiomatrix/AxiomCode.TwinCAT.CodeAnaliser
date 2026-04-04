@@ -129,11 +129,7 @@ public static class TcDutParser
 
     private static void ParseEnumValues(string declaration, TcDut dut)
     {
-        // Extract name from TYPE header
-        var headerMatch = TypeHeaderRegex.Match(declaration);
-        if (headerMatch.Success)
-            dut.Name = headerMatch.Groups["name"].Value;
-
+        // Name already set from XML attribute — do not override here.
         // Find the enum body between ( ... )
         var bodyMatch = EnumBodyRegex.Match(declaration);
         if (!bodyMatch.Success)
@@ -180,11 +176,7 @@ public static class TcDutParser
 
     private static void ParseStructMembers(string declaration, TcDut dut)
     {
-        // Extract name from TYPE header
-        var headerMatch = TypeHeaderRegex.Match(declaration);
-        if (headerMatch.Success)
-            dut.Name = headerMatch.Groups["name"].Value;
-
+        // Name already set from XML attribute — do not override here.
         // Find the content between STRUCT/UNION and END_STRUCT/END_UNION
         var structStart = StructUnionRegex.Match(declaration);
         if (!structStart.Success)
@@ -229,11 +221,10 @@ public static class TcDutParser
     private static void ParseAlias(string declaration, TcDut dut)
     {
         // TYPE Name : ExistingType; END_TYPE
+        // Name already set from XML attribute — do not override here.
         var headerMatch = TypeHeaderRegex.Match(declaration);
         if (!headerMatch.Success)
             return;
-
-        dut.Name = headerMatch.Groups["name"].Value;
 
         // Everything between the colon and the semicolon / END_TYPE is the base type
         var afterColon = declaration[(headerMatch.Index + headerMatch.Length)..];

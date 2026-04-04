@@ -47,10 +47,12 @@ public static class TcGvlParser
             // of REFERENCE TO, POINTER TO, ARRAY, AT bindings, constructor args, etc.
             var variables = TcPouParser.ParseVarBlocks(rawDeclaration);
 
-            // Override scope to Global for all GVL variables
+            // Override scope to Global for non-constant GVL variables.
+            // Constants retain VarScope.Constant so they can be grouped separately in the UI.
             foreach (var v in variables)
             {
-                v.Scope = VarScope.Global;
+                if (v.Scope != VarScope.Constant)
+                    v.Scope = VarScope.Global;
             }
 
             gvl.Variables = variables;
