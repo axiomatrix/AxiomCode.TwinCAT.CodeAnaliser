@@ -23,6 +23,10 @@ if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "/?
     Console.WriteLine("  twincat_state_machines   Extract state machines");
     Console.WriteLine("  twincat_module_info      Get module details");
     Console.WriteLine("  twincat_io_map           Extract IO mappings");
+    Console.WriteLine("  twincat_libraries        List PLC library dependencies");
+    Console.WriteLine("  twincat_safety           List TwinSAFE project artifacts");
+    Console.WriteLine("  twincat_drives           List Drive Manager artifacts");
+    Console.WriteLine("  twincat_scopes           List Scope View artifacts");
     return 0;
 }
 
@@ -56,6 +60,10 @@ if (args.Length >= 2 && args[0] == "--test")
         Console.WriteLine($"  IO Points:       {project.Summary.IoPointCount}");
         Console.WriteLine($"  Unresolved Types:{project.Summary.UnresolvedTypeCount}");
         Console.WriteLine($"  Tree Depth:      {project.Summary.TreeDepth}");
+        Console.WriteLine($"  Libraries:       {project.Summary.LibraryDependencyCount}");
+        Console.WriteLine($"  Safety Artifacts:{project.Summary.SafetyArtifactCount}");
+        Console.WriteLine($"  Drive Artifacts: {project.Summary.DriveManagerArtifactCount}");
+        Console.WriteLine($"  Scope Artifacts: {project.Summary.ScopeArtifactCount}");
 
         Console.WriteLine($"\nRoot Objects:");
         foreach (var node in project.ObjectTree)

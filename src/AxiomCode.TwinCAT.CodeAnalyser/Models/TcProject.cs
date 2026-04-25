@@ -18,6 +18,12 @@ public class TcProject
     public List<StateMachine> AllStateMachines { get; set; } = new();
     public List<IoMapping> AllIoMappings { get; set; } = new();
 
+    // Project-surface artifacts (beyond the core PLC source files)
+    public List<LibraryDependency> LibraryDependencies { get; set; } = new();
+    public List<SafetyArtifact> SafetyArtifacts { get; set; } = new();
+    public List<DriveManagerArtifact> DriveManagerArtifacts { get; set; } = new();
+    public List<ScopeArtifact> ScopeArtifacts { get; set; } = new();
+
     // Summary
     public ProjectSummary Summary { get; set; } = new();
 }
@@ -37,4 +43,10 @@ public class ProjectSummary
     public int IoPointCount { get; set; }
     public int UnresolvedTypeCount { get; set; }
     public int TreeDepth { get; set; }
+
+    // Project-surface artifact counts
+    public int LibraryDependencyCount { get; set; }
+    public int SafetyArtifactCount { get; set; }
+    public int DriveManagerArtifactCount { get; set; }
+    public int ScopeArtifactCount { get; set; }
 }

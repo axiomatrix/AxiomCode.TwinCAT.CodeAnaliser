@@ -155,49 +155,106 @@ public static class TcPouParser
 
         VarScope? currentScope = null;
         bool inBlockComment = false;
+        var pendingComments = new List<string>();
 
         for (int i = 0; i < lines.Length; i++)
         {
-            var line = lines[i];
+            var rawLine = lines[i];
 
-            // Track block comments across lines
-            line = StripBlockComments(line, ref inBlockComment);
+            // ---- Continue a multi-line (* ... *) block comment ----
             if (inBlockComment)
-                continue;
-
-            var trimmed = line.Trim();
-
-            // Skip empty / comment-only lines
-            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("//"))
-                continue;
-
-            // Check for END_VAR
-            if (trimmed.StartsWith("END_VAR", StringComparison.OrdinalIgnoreCase))
             {
-                currentScope = null;
+                var closeIdx = rawLine.IndexOf("*)", StringComparison.Ordinal);
+                if (closeIdx < 0)
+                {
+                    var midText = rawLine.Trim();
+                    if (midText.Length > 0) pendingComments.Add(midText);
+                    continue;
+                }
+
+                var tail = rawLine.Substring(0, closeIdx).Trim();
+                if (tail.Length > 0) pendingComments.Add(tail);
+                inBlockComment = false;
+
+                var afterClose = rawLine.Substring(closeIdx + 2);
+                if (string.IsNullOrWhiteSpace(afterClose)) continue;
+                rawLine = afterClose;
+            }
+
+            var trimmed = rawLine.Trim();
+            if (trimmed.Length == 0) continue;
+
+            // ---- Whole-line '//' comment ----
+            if (trimmed.StartsWith("//"))
+            {
+                pendingComments.Add(trimmed.Substring(2).Trim());
                 continue;
             }
 
-            // Check for VAR block start
+            // ---- Whole-line '(* ... *)' or start of multi-line block ----
+            if (trimmed.StartsWith("(*"))
+            {
+                var closeIdx = trimmed.IndexOf("*)", 2, StringComparison.Ordinal);
+                if (closeIdx >= 0)
+                {
+                    var body = trimmed.Substring(2, closeIdx - 2).Trim();
+                    if (body.Length > 0) pendingComments.Add(body);
+                    var after = trimmed.Substring(closeIdx + 2).Trim();
+                    if (after.Length == 0) continue;
+                    trimmed = after;
+                }
+                else
+                {
+                    inBlockComment = true;
+                    var head = trimmed.Substring(2).Trim();
+                    if (head.Length > 0) pendingComments.Add(head);
+                    continue;
+                }
+            }
+
+            // ---- END_VAR ----
+            if (trimmed.StartsWith("END_VAR", StringComparison.OrdinalIgnoreCase))
+            {
+                currentScope = null;
+                pendingComments.Clear();
+                continue;
+            }
+
+            // ---- VAR block start ----
             var varMatch = VarBlockStartRegex.Match(trimmed);
             if (varMatch.Success)
             {
                 currentScope = ResolveScope(
                     varMatch.Groups["suffix"].Value,
                     varMatch.Groups["qual"].Value);
+                pendingComments.Clear();
                 continue;
             }
 
-            // Parse variable line if inside a block
+            // ---- Declaration line inside a VAR block ----
             if (currentScope.HasValue)
             {
+                var leading = BuildLeadingComment(pendingComments);
+                pendingComments.Clear();
+
                 var variable = ParseVariableLine(trimmed, currentScope.Value);
                 if (variable != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(leading))
+                        variable.LeadingComment = leading;
                     variables.Add(variable);
+                }
             }
         }
 
         return variables;
+    }
+
+    private static string? BuildLeadingComment(List<string> pending)
+    {
+        if (pending.Count == 0) return null;
+        var joined = string.Join("\n", pending.Where(s => !string.IsNullOrWhiteSpace(s)));
+        return string.IsNullOrWhiteSpace(joined) ? null : joined.Trim();
     }
 
     /// <summary>

@@ -78,13 +78,22 @@ public class AnalyzerService
         // Step 7b: Distribute IO mappings to tree nodes
         DistributeIoToTree(project);
 
-        // Step 8: Build summary
+        // Step 8: Project-surface artifact discovery
+        project.LibraryDependencies = LibraryDependencyParser.Discover(normalizedPath);
+        project.SafetyArtifacts = SafetyProjectParser.Discover(normalizedPath);
+        project.DriveManagerArtifacts = DriveManagerParser.Discover(normalizedPath);
+        project.ScopeArtifacts = ScopeParser.Discover(normalizedPath);
+
+        // Step 9: Build summary
         BuildSummary(project);
 
         _cache[normalizedPath] = project;
 
-        _logger.LogInformation("Analysis complete: {A} alarms, {S} state machines, {I} IO points",
-            project.AllAlarms.Count, project.AllStateMachines.Count, project.AllIoMappings.Count);
+        _logger.LogInformation(
+            "Analysis complete: {A} alarms, {S} state machines, {I} IO points, {L} libraries, {Sf} safety, {D} drives, {Sc} scopes",
+            project.AllAlarms.Count, project.AllStateMachines.Count, project.AllIoMappings.Count,
+            project.LibraryDependencies.Count, project.SafetyArtifacts.Count,
+            project.DriveManagerArtifacts.Count, project.ScopeArtifacts.Count);
 
         return project;
     }
@@ -114,6 +123,10 @@ public class AnalyzerService
         s.IoPointCount = project.AllIoMappings.Count;
         s.UnresolvedTypeCount = project.UnresolvedTypes.Count;
         s.TreeDepth = CalcTreeDepth(project.ObjectTree, 0);
+        s.LibraryDependencyCount = project.LibraryDependencies.Count;
+        s.SafetyArtifactCount = project.SafetyArtifacts.Count;
+        s.DriveManagerArtifactCount = project.DriveManagerArtifacts.Count;
+        s.ScopeArtifactCount = project.ScopeArtifacts.Count;
     }
 
     /// <summary>

@@ -20,6 +20,7 @@ public class TcVariable
     public VarScope Scope { get; set; } = VarScope.Local;
     public string? InitialValue { get; set; }
     public string? Comment { get; set; }
+    public string? LeadingComment { get; set; }
 
     // Type qualifiers
     public bool IsReference { get; set; }

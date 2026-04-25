@@ -190,27 +190,81 @@ public static class TcDutParser
 
         var memberBlock = declaration[(structStart.Index + structStart.Length)..endIdx];
 
-        // Reuse variable parsing from TcPouParser — treat as a VAR block's contents
+        // Reuse variable parsing from TcPouParser — treat as a VAR block's contents.
+        // Comment-aware walk: capture leading // and (* *) comments, attach to next member.
         var lines = memberBlock.Split('\n');
         bool inBlockComment = false;
+        var pendingComments = new List<string>();
 
-        foreach (var rawLine in lines)
+        for (int i = 0; i < lines.Length; i++)
         {
-            var line = StripBlockComments(rawLine, ref inBlockComment);
-            if (inBlockComment)
-                continue;
+            var rawLine = lines[i];
 
-            var trimmed = line.Trim();
-            if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("//"))
+            if (inBlockComment)
+            {
+                var closeIdx = rawLine.IndexOf("*)", StringComparison.Ordinal);
+                if (closeIdx < 0)
+                {
+                    var midText = rawLine.Trim();
+                    if (midText.Length > 0) pendingComments.Add(midText);
+                    continue;
+                }
+                var tail = rawLine.Substring(0, closeIdx).Trim();
+                if (tail.Length > 0) pendingComments.Add(tail);
+                inBlockComment = false;
+                var afterClose = rawLine.Substring(closeIdx + 2);
+                if (string.IsNullOrWhiteSpace(afterClose)) continue;
+                rawLine = afterClose;
+            }
+
+            var trimmed = rawLine.Trim();
+            if (trimmed.Length == 0) continue;
+
+            if (trimmed.StartsWith("//"))
+            {
+                pendingComments.Add(trimmed.Substring(2).Trim());
                 continue;
+            }
+
+            if (trimmed.StartsWith("(*"))
+            {
+                var closeIdx = trimmed.IndexOf("*)", 2, StringComparison.Ordinal);
+                if (closeIdx >= 0)
+                {
+                    var body = trimmed.Substring(2, closeIdx - 2).Trim();
+                    if (body.Length > 0) pendingComments.Add(body);
+                    var after = trimmed.Substring(closeIdx + 2).Trim();
+                    if (after.Length == 0) continue;
+                    trimmed = after;
+                }
+                else
+                {
+                    inBlockComment = true;
+                    var head = trimmed.Substring(2).Trim();
+                    if (head.Length > 0) pendingComments.Add(head);
+                    continue;
+                }
+            }
 
             // Skip END_STRUCT / END_UNION / END_TYPE lines
             if (trimmed.StartsWith("END_", StringComparison.OrdinalIgnoreCase))
+            {
+                pendingComments.Clear();
                 continue;
+            }
+
+            var leading = pendingComments.Count == 0
+                ? null
+                : string.Join("\n", pendingComments.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+            pendingComments.Clear();
 
             var variable = TcPouParser.ParseVariableLine(trimmed, VarScope.Local);
             if (variable != null)
+            {
+                if (!string.IsNullOrWhiteSpace(leading))
+                    variable.LeadingComment = leading;
                 dut.Members.Add(variable);
+            }
         }
     }
 

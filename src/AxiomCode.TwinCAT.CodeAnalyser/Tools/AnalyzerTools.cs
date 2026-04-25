@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ModelContextProtocol.Server;
@@ -7,6 +7,7 @@ using AxiomCode.TwinCAT.CodeAnalyser.Services;
 
 namespace AxiomCode.TwinCAT.CodeAnalyser.Tools;
 
+[McpServerToolType]
 public class AnalyzerTools
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -145,7 +146,7 @@ public class AnalyzerTools
             pou.ExtendsType,
             pou.InheritanceChain,
             pou.ImplementsList,
-            Variables = pou.Variables.Select(v => new { v.Name, v.DataType, v.Scope, v.IsReference, v.IsArray, v.AtBinding, v.ConstructorArgs }),
+            Variables = pou.Variables.Select(v => new { v.Name, v.DataType, v.Scope, v.IsReference, v.IsArray, v.AtBinding, v.ConstructorArgs, v.Comment, v.LeadingComment }),
             Methods = pou.Methods.Select(m => new { m.Name, m.Visibility, m.ReturnType, m.FolderPath }),
             Properties = pou.Properties.Select(p => new { p.Name, p.DataType, p.HasGetter, p.HasSetter, p.FolderPath }),
             Alarms = alarms,
@@ -178,5 +179,77 @@ public class AnalyzerTools
     private static int CountAlarms(ObjectTreeNode node)
     {
         return node.Alarms.Count + node.Children.Sum(c => CountAlarms(c));
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Tool 7: twincat_libraries
+    // ──────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_libraries"), Description(
+        "List PLC library dependencies extracted from .plcproj files. " +
+        "Returns library name, namespace, default resolution, resolved version lock, " +
+        "and vendor for every PlaceholderReference / PlaceholderResolution discovered.")]
+    public static string Libraries(
+        AnalyzerService analyzer,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path)
+    {
+        var project = analyzer.AnalyzeProject(project_path);
+        return JsonSerializer.Serialize(project.LibraryDependencies, JsonOpts);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Tool 8: twincat_safety
+    // ──────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_safety"), Description(
+        "List TwinSAFE project artifacts discovered in the project. Covers " +
+        ".splcproj (safety project), .sal (safety logic), .sal.diagram (layout), " +
+        ".sds (alias device with IO list), and TargetSystemConfig safety XML. " +
+        "Returns per-artifact metadata, related-file references, and for alias devices " +
+        "the SDSID and IO entries.")]
+    public static string Safety(
+        AnalyzerService analyzer,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path)
+    {
+        var project = analyzer.AnalyzeProject(project_path);
+        return JsonSerializer.Serialize(project.SafetyArtifacts, JsonOpts);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Tool 9: twincat_drives
+    // ──────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_drives"), Description(
+        "List Drive Manager artifacts discovered in the project. Covers .tcdmproj " +
+        "(project container, referenced .tcdmdrv files) and .tcdmdrv (per-drive " +
+        "configuration with recursive parameter tree, linked TwinCAT project path, " +
+        "and IO item path name).")]
+    public static string Drives(
+        AnalyzerService analyzer,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path)
+    {
+        var project = analyzer.AnalyzeProject(project_path);
+        return JsonSerializer.Serialize(project.DriveManagerArtifacts, JsonOpts);
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Tool 10: twincat_scopes
+    // ──────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_scopes"), Description(
+        "List Scope View artifacts discovered in the project. Covers .tcmproj " +
+        "(project container) and .tcscopex (scope configuration with ADS acquisition " +
+        "signal list, symbol/transformation/enabled counts, and a human-readable " +
+        "description of the configuration).")]
+    public static string Scopes(
+        AnalyzerService analyzer,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path)
+    {
+        var project = analyzer.AnalyzeProject(project_path);
+        return JsonSerializer.Serialize(project.ScopeArtifacts, JsonOpts);
     }
 }
