@@ -64,14 +64,15 @@ public class StandardCompliance
     public double Score => TotalChecked == 0 ? 1.0
         : (PassCount + WarningCount * 0.5) / TotalChecked;
 
-    /// <summary>0–100 integer percent for UI display.</summary>
+    /// <summary>0–100 integer percent for UI display (currently only the PackML row shows this).</summary>
     public int ScorePercent => (int)Math.Round(Score * 100);
 
     /// <summary>Compliant when score ≥ 0.8 with zero hard failures.</summary>
     public bool IsCompliant => Score >= 0.8 && FailCount == 0;
 
     /// <summary>
-    /// RAG verdict for the row-level badge:
+    /// RAG verdict — currently consumed only by the PackML row in the
+    /// Compliance list. Other standards keep their original PASS/FAIL pill.
     /// NotApplicable when nothing was checked; Fail if any hard failure;
     /// Pass ≥ 90%; Warning 60–89%; otherwise Fail.
     /// </summary>
@@ -80,6 +81,10 @@ public class StandardCompliance
         : Score >= 0.9    ? ComplianceLevel.Pass
         : Score >= 0.6    ? ComplianceLevel.Warning
         :                   ComplianceLevel.Fail;
+
+    /// <summary>True when this row represents the PackML standard. Used by the UI
+    /// to swap the badge style and to render the rich five-section detail block.</summary>
+    public bool IsPackMl => Standard == ComplianceStandard.PackML;
 }
 
 /// <summary>All compliance results for one POU/module.</summary>
