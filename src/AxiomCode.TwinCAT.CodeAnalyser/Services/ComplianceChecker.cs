@@ -411,58 +411,81 @@ public static class ComplianceChecker
 
     private static StandardCompliance CheckPackml(TcPou pou, IReadOnlyList<StateMachine>? sms)
     {
-        var dmSms = sms?.Where(sm => sm.DetectedBy == SmDetectionStrategy.DmStateMachine).ToList()
-                   ?? [];
+        // Run the dedicated PackML analyser. It produces the rich five-section
+        // breakdown (states, transitions, commands, modes, errors). We surface
+        // it as one row in the Compliance list with a RAG badge + score %, and
+        // attach the detail block for the Expander body.
+        var detail = PackMlAnalyzer.Analyse(pou, sms);
 
-        if (dmSms.Count == 0)
+        const string desc = "OMAC / ISA-88 machine state model — 14 canonical states, transitions, commands, modes, errors";
+
+        if (!detail.IsApplicable)
         {
-            return Std(ComplianceStandard.PackML, "PackML",
-                "OMAC / ISA-88 machine state model — 17 canonical states and transitions",
-                [Rule("PKM-000", "PackML rules apply when DM_StateMachine instances are detected",
-                    ComplianceLevel.NotApplicable)]);
+            return new StandardCompliance
+            {
+                Standard    = ComplianceStandard.PackML,
+                Label       = "PackML",
+                Description = desc,
+                PackMlDetail = detail,
+                Rules =
+                [
+                    Rule("PKM-000",
+                        "Module does not implement canonical PackML state handling",
+                        ComplianceLevel.NotApplicable,
+                        "Either uses a different lifecycle (e.g. 3PI Mode × Phase) or is a non-stateful helper.")
+                ],
+            };
         }
 
-        var rules = new List<ComplianceRule>();
-
-        foreach (var sm in dmSms.Take(3))   // Check up to 3 SMs per module
+        // Five summary rules — one per section. Levels are mapped from each
+        // section's coverage so the row's aggregate Score reflects the overall
+        // PackML conformance reported in the rich detail.
+        var rules = new List<ComplianceRule>
         {
-            var stateNames = sm.States.Select(s => s.Name).ToList();
-            var matchCount = stateNames.Count(n =>
-                PackmlStates.Any(p => n.Contains(p, StringComparison.OrdinalIgnoreCase)));
+            SummaryRule("PKM-STATES",      "State coverage",
+                detail.States.ImplementedCount, detail.States.RequiredCount,
+                $"{detail.States.ImplementedCount}/{detail.States.RequiredCount} canonical states implemented"),
 
-            // PKM-001 — ≥10 of 17 canonical states present
-            rules.Add(Rule($"PKM-001",
-                $"'{sm.DisplayName ?? sm.EnumTypeName}' covers ≥10 PackML canonical states",
-                matchCount >= 10 ? ComplianceLevel.Pass
-                : matchCount >= 6 ? ComplianceLevel.Warning : ComplianceLevel.Fail,
-                $"{matchCount}/17 PackML states matched ({stateNames.Count} total states)"));
+            SummaryRule("PKM-TRANSITIONS", "Transition graph",
+                detail.Transitions.PresentCount, detail.Transitions.RequiredCount,
+                $"{detail.Transitions.PresentCount}/{detail.Transitions.RequiredCount} required transitions present"),
 
-            // PKM-002 — Abort path
-            var hasAbort = stateNames.Any(n => n.Contains("Abort", StringComparison.OrdinalIgnoreCase));
-            rules.Add(Rule("PKM-002", $"'{sm.DisplayName ?? sm.EnumTypeName}' includes Abort/Aborting state",
-                hasAbort ? ComplianceLevel.Pass : ComplianceLevel.Fail,
-                hasAbort ? null : "No Abort state — machine cannot meet PackML emergency stop requirements"));
+            SummaryRule("PKM-COMMANDS",    "Operator commands",
+                detail.Commands.BoundCount, detail.Commands.RequiredCount,
+                $"{detail.Commands.BoundCount}/{detail.Commands.RequiredCount} required commands bound"),
 
-            // PKM-003 — Execute / Running state
-            var hasExecute = stateNames.Any(n =>
-                n.Contains("Execute", StringComparison.OrdinalIgnoreCase) ||
-                n.Contains("Running", StringComparison.OrdinalIgnoreCase) ||
-                n.Contains("Operation", StringComparison.OrdinalIgnoreCase));
-            rules.Add(Rule("PKM-003", $"'{sm.DisplayName ?? sm.EnumTypeName}' includes Execute/Running state",
-                hasExecute ? ComplianceLevel.Pass : ComplianceLevel.Fail,
-                hasExecute ? null : "No Execute or Running state detected"));
+            SummaryRule("PKM-MODES",       "Mode coverage",
+                detail.Modes.ImplementedCount, detail.Modes.RequiredCount,
+                $"{detail.Modes.ImplementedCount}/{detail.Modes.RequiredCount} canonical modes implemented"),
 
-            // PKM-004 — Error/fault handling state
-            var hasError = sm.States.Any(s => s.IsError) ||
-                stateNames.Any(n => n.Contains("Error", StringComparison.OrdinalIgnoreCase) ||
-                                    n.Contains("Fault", StringComparison.OrdinalIgnoreCase));
-            rules.Add(Rule("PKM-004", $"'{sm.DisplayName ?? sm.EnumTypeName}' includes error/fault state",
-                hasError ? ComplianceLevel.Pass : ComplianceLevel.Warning,
-                hasError ? null : "No error or fault state detected"));
-        }
+            SummaryRule("PKM-ERRORS",      "Error handling",
+                detail.Errors.Score, 3,
+                detail.Errors.Findings.Count == 0
+                    ? $"Score {detail.Errors.Score}/3 — no findings"
+                    : $"Score {detail.Errors.Score}/3 — {detail.Errors.Findings.Count} finding(s)"),
+        };
 
-        return Std(ComplianceStandard.PackML, "PackML",
-            "OMAC / ISA-88 machine state model — 17 canonical states and required transitions", rules);
+        return new StandardCompliance
+        {
+            Standard     = ComplianceStandard.PackML,
+            Label        = "PackML",
+            Description  = desc,
+            PackMlDetail = detail,
+            Rules        = rules,
+        };
+    }
+
+    /// <summary>
+    /// Map a section's "got/required" coverage to a Pass / Warning / Fail rule.
+    /// 100% → Pass, ≥60% → Warning, otherwise Fail. Required==0 yields Pass.
+    /// </summary>
+    private static ComplianceRule SummaryRule(string id, string desc, int got, int required, string detail)
+    {
+        var ratio = required == 0 ? 1.0 : (double)got / required;
+        var level = ratio >= 1.0 ? ComplianceLevel.Pass
+                  : ratio >= 0.6 ? ComplianceLevel.Warning
+                  :                ComplianceLevel.Fail;
+        return Rule(id, desc, level, detail);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

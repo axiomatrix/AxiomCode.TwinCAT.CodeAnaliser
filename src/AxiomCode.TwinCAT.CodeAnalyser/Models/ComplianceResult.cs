@@ -47,6 +47,14 @@ public class StandardCompliance
     public required string Description { get; init; }  // one-line summary
     public List<ComplianceRule> Rules  { get; init; } = [];
 
+    /// <summary>
+    /// Optional rich PackML breakdown. Non-null only for the PackML standard.
+    /// When set, the Compliance UI renders the five-section detail (states,
+    /// transitions, commands, modes, errors) in the expander body instead of
+    /// the flat rule list.
+    /// </summary>
+    public PackMlComplianceResult? PackMlDetail { get; init; }
+
     public int PassCount    => Rules.Count(r => r.Level == ComplianceLevel.Pass);
     public int WarningCount => Rules.Count(r => r.Level == ComplianceLevel.Warning);
     public int FailCount    => Rules.Count(r => r.Level == ComplianceLevel.Fail);
@@ -56,8 +64,22 @@ public class StandardCompliance
     public double Score => TotalChecked == 0 ? 1.0
         : (PassCount + WarningCount * 0.5) / TotalChecked;
 
+    /// <summary>0–100 integer percent for UI display.</summary>
+    public int ScorePercent => (int)Math.Round(Score * 100);
+
     /// <summary>Compliant when score ≥ 0.8 with zero hard failures.</summary>
     public bool IsCompliant => Score >= 0.8 && FailCount == 0;
+
+    /// <summary>
+    /// RAG verdict for the row-level badge:
+    /// NotApplicable when nothing was checked; Fail if any hard failure;
+    /// Pass ≥ 90%; Warning 60–89%; otherwise Fail.
+    /// </summary>
+    public ComplianceLevel OverallLevel => TotalChecked == 0 ? ComplianceLevel.NotApplicable
+        : FailCount > 0   ? ComplianceLevel.Fail
+        : Score >= 0.9    ? ComplianceLevel.Pass
+        : Score >= 0.6    ? ComplianceLevel.Warning
+        :                   ComplianceLevel.Fail;
 }
 
 /// <summary>All compliance results for one POU/module.</summary>
