@@ -49,4 +49,16 @@ public class ProjectSummary
     public int SafetyArtifactCount { get; set; }
     public int DriveManagerArtifactCount { get; set; }
     public int ScopeArtifactCount { get; set; }
+
+    // Deep alarm resolution diagnostics
+    public int AlarmsResolvedByDeepScan { get; set; }
+    public int AlarmsAmbiguousAfterDeepScan { get; set; }
+    public int SeverityBlocksDetected { get; set; }
+    /// <summary>
+    /// True if the project contains any _AlarmsPresentX (Critical/Process/Advisory/Information)
+    /// severity assignments. False indicates the author chose a single _AlarmsPresent
+    /// aggregate convention with no severity split — Unresolved alarms in such projects
+    /// are an architectural choice, not an analysis gap.
+    /// </summary>
+    public bool ProjectUsesSeveritySplit { get; set; }
 }

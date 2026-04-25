@@ -66,8 +66,14 @@ public class AnalyzerService
         // Step 4: Build object tree
         ObjectTreeBuilder.Build(project);
 
-        // Step 5: Analyze alarms
+        // Step 5: Analyze alarms (per-POU first pass)
         AlarmAnalyzer.Analyze(project);
+
+        // Step 5b: Cross-POU deep alarm severity resolution.
+        // Resolves the BaseClass-driven Unresolved bucket by scanning every
+        // _AlarmsPresentX block project-wide and binding alarms that appear
+        // unambiguously in exactly one severity tier.
+        DeepAlarmResolver.Resolve(project);
 
         // Step 6: Extract state machines
         StateMachineExtractor.Extract(project);
