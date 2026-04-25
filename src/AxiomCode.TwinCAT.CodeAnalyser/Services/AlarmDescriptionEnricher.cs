@@ -29,9 +29,13 @@ public static class AlarmDescriptionEnricher
     {
         foreach (var alarm in project.AllAlarms)
         {
-            if (!string.IsNullOrEmpty(alarm.Description)) continue;
-            alarm.Description       = BuildHeuristicDescription(alarm);
-            alarm.DescriptionSource = "heuristic";
+            if (string.IsNullOrEmpty(alarm.Description))
+            {
+                alarm.Description       = BuildHeuristicDescription(alarm);
+                alarm.DescriptionSource = "heuristic";
+            }
+            // MetaInfo is always re-derived from analyser facts; never overridden by AI.
+            alarm.MetaInfo = BuildMetaInfo(alarm);
         }
     }
 
@@ -50,12 +54,32 @@ public static class AlarmDescriptionEnricher
     public static int ApplyOverrides(
         TcProject project,
         IReadOnlyDictionary<string, AlarmOverride> overrides)
+        => ApplyOverrides(project, ownerModuleType: null, overrides);
+
+    /// <summary>
+    /// Scope-correct overlay: when <paramref name="ownerModuleType"/> is supplied,
+    /// only alarms whose <see cref="AlarmInfo.ModuleType"/> matches it are
+    /// updated. This prevents alarm-name collisions across modules (e.g. two FBs
+    /// both define <c>ALM_UnspecifiedFault</c>) from being incorrectly cross-
+    /// pollinated by the first arriving AI interpretation. Pass null to apply
+    /// project-wide (legacy behaviour).
+    /// </summary>
+    public static int ApplyOverrides(
+        TcProject project,
+        string? ownerModuleType,
+        IReadOnlyDictionary<string, AlarmOverride> overrides)
     {
         if (overrides.Count == 0) return 0;
         int applied = 0;
         foreach (var alarm in project.AllAlarms)
         {
+            // Scope filter: only update alarms whose owning POU matches
+            if (!string.IsNullOrEmpty(ownerModuleType)
+                && !string.Equals(alarm.ModuleType, ownerModuleType, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             if (!overrides.TryGetValue(alarm.InstanceName, out var ov)) continue;
+
             if (!string.IsNullOrWhiteSpace(ov.Description))
             {
                 alarm.Description       = ov.Description.Trim();
@@ -69,9 +93,10 @@ public static class AlarmDescriptionEnricher
     }
 
     /// <summary>
-    /// Build a one-sentence description from name, trigger condition, severity,
-    /// and module type. Designed to be useful even when an AI hasn't run yet —
-    /// the heuristic should at least answer "what is this and when does it raise".
+    /// Build the prose description — answers "what is this and when does it
+    /// raise". Ownership and resolution caveats are excluded; they live in
+    /// <see cref="BuildMetaInfo"/> so the UI / SDS can render them on a
+    /// distinct line with a muted style.
     /// </summary>
     private static string BuildHeuristicDescription(AlarmInfo alarm)
     {
@@ -99,17 +124,26 @@ public static class AlarmDescriptionEnricher
         if (alarm.TriggerDelayMs.HasValue && alarm.TriggerDelayMs.Value > 0)
             sb.Append($" The condition must persist for at least {alarm.TriggerDelayMs}\u00a0ms before the alarm latches.");
 
-        // Module context
-        if (!string.IsNullOrEmpty(alarm.ModuleType))
-            sb.Append($" Owned by `{alarm.ModuleType}`.");
+        return sb.ToString().Trim();
+    }
 
-        // Resolution status caveat
+    /// <summary>
+    /// Build the ownership + resolution-caveat sentence rendered on its own
+    /// line beneath the description. Always derived from analyser facts —
+    /// never replaced by AI overrides.
+    /// </summary>
+    private static string BuildMetaInfo(AlarmInfo alarm)
+    {
+        var sb = new System.Text.StringBuilder();
+        if (!string.IsNullOrEmpty(alarm.ModuleType))
+            sb.Append($"Owned by {alarm.ModuleType}.");
+
         if (alarm.UnresolvedReason == UnresolvedReason.BaseClass)
             sb.Append(" Severity inferred from inherited framework — confirm during review.");
         else if (alarm.UnresolvedReason == UnresolvedReason.Missing)
             sb.Append(" Severity binding not located in source — review required.");
         else if (alarm.UnresolvedReason == UnresolvedReason.NoMethod)
-            sb.Append(" No `_Alarms` method present in the owning module — severity cannot be determined statically.");
+            sb.Append(" No _Alarms method present in the owning module — severity cannot be determined statically.");
         else if (alarm.UnresolvedReason == UnresolvedReason.Dead)
             sb.Append(" Variable declared but never referenced in any method body — likely dead code.");
 

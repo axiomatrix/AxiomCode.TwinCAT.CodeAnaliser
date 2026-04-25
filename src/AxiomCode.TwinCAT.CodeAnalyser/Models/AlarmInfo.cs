@@ -58,6 +58,14 @@ public class AlarmInfo
     public string? RecommendedAction { get; set; }
 
     /// <summary>
+    /// Ownership and resolution caveats — separated from <see cref="Description"/>
+    /// so the UI / SDS can render them on a distinct line with a muted style.
+    /// Format example:
+    ///   "Owned by UM_Machine. Severity inferred from inherited framework — confirm during review."
+    /// </summary>
+    public string MetaInfo { get; set; } = "";
+
+    /// <summary>
     /// True if this alarm was found in a POU definition that is NOT instantiated
     /// in the object tree. These are alarm definitions from templates, base classes,
     /// or FBs not yet wired into the machine hierarchy.
