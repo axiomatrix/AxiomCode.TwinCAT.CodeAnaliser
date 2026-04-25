@@ -36,6 +36,28 @@ public class AlarmInfo
     public string Condition { get; set; } = "";
 
     /// <summary>
+    /// Human-readable description of what this alarm actually means — what the
+    /// runtime situation is when it raises, and what action it implies. Populated
+    /// by <see cref="Services.AlarmDescriptionEnricher"/> using a heuristic
+    /// fallback at parse time and overridden by AI-interpreted prose when an
+    /// upstream interpretation pass has produced one.
+    /// </summary>
+    public string Description { get; set; } = "";
+
+    /// <summary>
+    /// Where the description came from — useful for transparency in the UI:
+    /// "heuristic", "ai-interpretation", "manual-override".
+    /// </summary>
+    public string DescriptionSource { get; set; } = "";
+
+    /// <summary>
+    /// Operator action implied by the alarm (e.g. "operator confirms compressed-air
+    /// supply, then resets via the alarm-reset workflow"). Populated only when an
+    /// AI interpretation supplies it.
+    /// </summary>
+    public string? RecommendedAction { get; set; }
+
+    /// <summary>
     /// True if this alarm was found in a POU definition that is NOT instantiated
     /// in the object tree. These are alarm definitions from templates, base classes,
     /// or FBs not yet wired into the machine hierarchy.

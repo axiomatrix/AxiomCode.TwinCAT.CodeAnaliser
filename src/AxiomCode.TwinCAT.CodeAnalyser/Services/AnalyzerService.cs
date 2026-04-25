@@ -75,6 +75,12 @@ public class AnalyzerService
         // unambiguously in exactly one severity tier.
         DeepAlarmResolver.Resolve(project);
 
+        // Step 5c: Heuristic alarm descriptions. Every alarm gets a baseline
+        // human-readable description from name + trigger + severity even before
+        // any AI interpretation runs. Higher-quality AI-derived descriptions can
+        // be overlaid later via AlarmDescriptionEnricher.ApplyOverrides.
+        AlarmDescriptionEnricher.ApplyHeuristic(project);
+
         // Step 6: Extract state machines
         StateMachineExtractor.Extract(project);
 
