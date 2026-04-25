@@ -7,7 +7,17 @@ public enum ComplianceStandard
     OOP_SOLID,
     ISA88,
     PackML,
-    GAMP5
+    GAMP5,
+    /// <summary>Architectural integrity: cycles, override discipline, abstract contracts, dispatch consistency.</summary>
+    ArchitecturalIntegrity,
+    /// <summary>Identifier naming conventions (ISA-88 prefixes, casing, reserved words).</summary>
+    NamingConventions,
+    /// <summary>Source-file structure: file ending, property VAR blocks, element ordering.</summary>
+    CodeStructure,
+    /// <summary>Source style: tabs, indentation, excessive blank lines, CDATA formatting.</summary>
+    CodeStyle,
+    /// <summary>XML / GUID integrity: GUID format and uniqueness across the project.</summary>
+    XmlIntegrity,
 }
 
 /// <summary>Outcome of a single compliance rule check.</summary>

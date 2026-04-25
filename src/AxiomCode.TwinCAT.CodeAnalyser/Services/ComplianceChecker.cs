@@ -36,7 +36,8 @@ public static class ComplianceChecker
     public static ModuleCompliance EvaluateModule(
         TcPou pou,
         IsaLayer? layer,
-        IReadOnlyList<StateMachine>? nodeSms)
+        IReadOnlyList<StateMachine>? nodeSms,
+        TcProject? project = null)
     {
         var standards = new List<StandardCompliance>
         {
@@ -46,6 +47,16 @@ public static class ComplianceChecker
             CheckPackml(pou, nodeSms),
             CheckGamp5Module(pou, layer),
         };
+
+        // Ported validator-MCP checks. ArchitecturalIntegrity needs the
+        // project-wide POU index for cross-module resolution; the rest are
+        // module-local.
+        if (project != null)
+            standards.Add(ComplianceCheckerExtensions.CheckArchitectural(pou, project));
+        standards.Add(ComplianceCheckerExtensions.CheckNamingConventions(pou));
+        standards.Add(ComplianceCheckerExtensions.CheckCodeStructure(pou));
+        standards.Add(ComplianceCheckerExtensions.CheckCodeStyle(pou));
+        standards.Add(ComplianceCheckerExtensions.CheckXmlIntegrity(pou));
 
         return new ModuleCompliance { PouName = pou.Name, Standards = standards };
     }
@@ -61,6 +72,7 @@ public static class ComplianceChecker
             CheckIec61131Project(project),
             CheckIsa88Project(project),
             CheckGamp5Project(project),
+            ComplianceCheckerExtensions.CheckProjectGuidUniqueness(project),
         };
         return new ProjectCompliance { Standards = standards };
     }
