@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      MCP server shim — thin Exe over the AxiomCode.TwinCAT.CodeAnalyser
+      Library. Hosts the MCP stdio loop (ModelContextProtocol SDK) and
+      the [McpServerTool] tool surface.
+
+      Stays on net8.0 because that's the framework the existing local
+      AxiomCode.TwinCatAds and other MCP servers run on, and what's
+      registered in `D:\AXIOM-DATA\GITHUB\.mcp.json`.
+    -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>AxiomCode.TwinCAT.CodeAnalyser.McpServer</RootNamespace>
+    <AssemblyName>AxiomCode.TwinCAT.CodeAnalyser.McpServer</AssemblyName>
+
+    <!-- Exe is not packaged — only the Library publishes to NuGet -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AxiomCode.TwinCAT.CodeAnalyser\AxiomCode.TwinCAT.CodeAnalyser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol"        Version="1.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

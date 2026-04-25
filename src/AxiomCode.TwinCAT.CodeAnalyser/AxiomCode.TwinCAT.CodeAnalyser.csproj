@@ -1,19 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <!--
+      Library project: parsing, compliance, PackML, alarms and IO
+      extraction services consumable from any .NET application.
+      Multi-targets net8.0 (matches MCP server runtime + downstream MCP
+      consumers) and net10.0 (matches TwinStack.AIPlatform).
+    -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <RootNamespace>AxiomCode.TwinCAT.CodeAnalyser</RootNamespace>
     <AssemblyName>AxiomCode.TwinCAT.CodeAnalyser</AssemblyName>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>AxiomCode.TwinCAT.CodeAnalyser</PackageId>
+    <Description>TwinCAT 3 PLC project parser and analyser. Reads .plcproj / .TcPOU / .TcDUT / .TcGVL files and produces a strongly-typed model with state machines, compliance scores (IEC 61131-3, OOP/SOLID, ISA-88, PackML, GAMP 5), alarms, IO mappings and inheritance chains.</Description>
+    <PackageTags>twincat;plc;iec61131;isa88;packml;gamp5;axiotech</PackageTags>
   </PropertyGroup>
 
+  <!--
+    Logging contracts only — the Library exposes ILogger<T> on its public
+    constructors but does not pull in a concrete logging provider. Hosts
+    (the McpServer, TwinStack) wire up whatever logger they prefer.
+  -->
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" Version="1.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
+  <!--
+    HtmlGenerator embeds these resources via Assembly.GetExecutingAssembly()
+    and emits a self-contained interactive HTML report. They must live in
+    the Library assembly so any downstream consumer (TwinStack, future
+    apps) can call HtmlGenerator.Generate(project, outPath) without
+    shipping the templates themselves.
+  -->
   <ItemGroup>
     <EmbeddedResource Include="Templates\viewer.html" />
     <EmbeddedResource Include="Templates\company_logo.png" />

@@ -1,65 +1,146 @@
 # AxiomCode.TwinCAT.CodeAnalyser
 
-MCP (Model Context Protocol) server for analyzing TwinCAT 3 Structured Text codebases. Generates interactive HTML documentation with alarm analysis, state machine diagrams, and IO mapping.
+TwinCAT 3 PLC project parser and analyser. Built as a **dual-purpose** repo:
 
-## Features
+| Surface | Role | Built as |
+| --- | --- | --- |
+| `AxiomCode.TwinCAT.CodeAnalyser` | **Library** — embeddable in any .NET app (TwinStack, internal tools, future commissioning consoles). Publishes to GitHub Packages. | `Library`, `IsPackable=true`, multi-targets `net8.0;net10.0` |
+| `AxiomCode.TwinCAT.CodeAnalyser.McpServer` | **MCP Server** — thin Exe shim hosting the [`ModelContextProtocol`](https://github.com/modelcontextprotocol/csharp-sdk) stdio loop and `[McpServerTool]` tool surface. Registered in Claude Code via `.mcp.json` by absolute path. | `Exe`, `net8.0`, not packaged |
 
-- **Full object tree** — walks GVL instances recursively, resolves inheritance, maps ISA-88 hierarchy (UM/EM/CM/DM)
-- **Alarm analysis** — extracts all DM_TriggeredLatch instances, determines severity from `_Alarms()` methods, identifies unresolved reasons
-- **State machine extraction** — parses CASE blocks on DM_StateMachine instances, extracts states, transitions, timeouts, and code bodies
-- **IO mapping** — extracts AT bindings from GVLs and FB declarations
-- **Interactive HTML viewer** — self-contained file with collapsible tree, search, filtering, state machine SVG diagrams, code drill-down
+The Library is the source of truth for parsing, compliance, PackML, alarm
+extraction and IO mapping. The MCP Server is one consumer of that Library;
+TwinStack is another. Internal applications get the same data shape from
+both surfaces.
 
-## MCP Tools
+## Layout
+
+```
+AxiomCode.TwinCAT.CodeAnalyser/
+├── .github/workflows/
+│   ├── ci.yml                              # PR / main: restore → build
+│   └── release.yml                         # on vMAJOR.MINOR.PATCH tag: pack Library + push to GitHub Packages
+├── src/
+│   ├── AxiomCode.TwinCAT.CodeAnalyser/                  # Library
+│   │   ├── Models/                                      # public types: TcProject, TcPou, …
+│   │   ├── Services/                                    # AnalyzerService, ComplianceChecker, …
+│   │   ├── Templates/                                   # embedded HTML viewer assets
+│   │   └── AxiomCode.TwinCAT.CodeAnalyser.csproj
+│   └── AxiomCode.TwinCAT.CodeAnalyser.McpServer/        # MCP server Exe shim
+│       ├── Tools/                                        # [McpServerTool] wrappers
+│       ├── Program.cs                                   # stdio host bootstrap
+│       ├── appsettings.json
+│       └── AxiomCode.TwinCAT.CodeAnalyser.McpServer.csproj
+├── AxiomCode.TwinCAT.CodeAnalyser.sln
+├── Directory.Build.props                   # repo-wide compile / metadata defaults
+├── global.json                             # SDK 10.0.x latestMinor
+├── nuget.config                            # axiomatrix package source (private GitHub Packages)
+├── CHANGELOG.md
+├── LICENSE
+└── README.md
+```
+
+## Library — what it provides
+
+Public namespaces (consumed today by [TwinStack.AIPlatform](https://github.com/axiomatrix/AxiomCode.TwinStack.AIPlatform)):
+
+| Namespace | Contents |
+| --- | --- |
+| `AxiomCode.TwinCAT.CodeAnalyser.Models` | `TcProject`, `TcPou`, `TcDut`, `TcGvl`, `TcMethod`, `TcVariable`, `StateMachine`, `AlarmInfo`, `IsaLayer`, `VarScope`, `PackMlComplianceResult`, `StandardCompliance`, `ModuleCompliance`, `ProjectCompliance`, `ComplianceLevel` |
+| `AxiomCode.TwinCAT.CodeAnalyser.Services` | `AnalyzerService` (pipeline entry point), `ComplianceChecker` (10-standard compliance), `PackMlAnalyzer`, `AlarmDescriptionEnricher`, `HtmlGenerator` |
+
+Minimal usage:
+
+```csharp
+using Microsoft.Extensions.Logging.Abstractions;
+using AxiomCode.TwinCAT.CodeAnalyser.Services;
+
+var analyzer = new AnalyzerService(NullLogger<AnalyzerService>.Instance);
+var project  = analyzer.AnalyzeProject(@"D:\path\to\project.plcproj");
+
+Console.WriteLine($"{project.Summary.PouCount} POUs, {project.Summary.TotalAlarms} alarms");
+```
+
+## MCP Server — what it provides
+
+Tool catalogue surfaced over stdio to Claude Code / Claude Desktop:
 
 | Tool | Description |
-|------|-------------|
+| --- | --- |
 | `twincat_analyze` | Full project analysis — returns summary JSON |
 | `twincat_generate_html` | Generate interactive HTML viewer |
-| `twincat_alarm_list` | Extract flat alarm list as JSON |
-| `twincat_state_machines` | Extract state machines with states and transitions |
-| `twincat_module_info` | Detailed info about a specific POU/module |
-| `twincat_io_map` | Extract all IO mappings |
+| `twincat_alarm_list` | Extract flat alarm list |
+| `twincat_state_machines` | State machines with states + transitions |
+| `twincat_module_info` | Detailed info about a specific POU |
+| `twincat_io_map` | All IO mappings |
+| `twincat_libraries` | PLC library dependencies |
+| `twincat_safety` | TwinSAFE project artefacts |
+| `twincat_drives` | Drive Manager artefacts |
+| `twincat_scopes` | Scope View artefacts |
 
-## Usage
+## Building
 
-### As MCP Server (Claude Code)
-
-Add to your Claude Code settings or `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "twincat-analyzer": {
-      "command": "D:\\path\\to\\AxiomCode.TwinCAT.CodeAnalyser.exe"
-    }
-  }
-}
-```
-
-### Command Line (Test Mode)
-
-```
-AxiomCode.TwinCAT.CodeAnalyser.exe --test <project_path> [output.html]
-```
-
-### Build
+Standard .NET CLI:
 
 ```powershell
-.\build.ps1              # Debug build
-.\build.ps1 -Release     # Release build
-.\build.ps1 -Publish     # Self-contained publish
+dotnet restore
+dotnet build -c Release
 ```
 
-## Requirements
+Both projects build by default. The McpServer Exe lands at:
 
-- .NET 8.0 SDK
-- TwinCAT 3 project with .TcPOU, .TcDUT, .TcGVL source files
+```
+src/AxiomCode.TwinCAT.CodeAnalyser.McpServer/bin/Release/net8.0/AxiomCode.TwinCAT.CodeAnalyser.McpServer.exe
+```
 
-## Architecture
+The repo-wide `D:\AXIOM-DATA\GITHUB\.mcp.json` already references that
+absolute path, so `claude` picks it up after every build.
 
-Built with the `ModelContextProtocol` NuGet package for MCP server capabilities. Parses TwinCAT XML source files using `System.Xml.Linq` and Structured Text declarations using regex-based parsing.
+## Releasing
 
-## Author
+Tag a commit on `main` with `vMAJOR.MINOR.PATCH` and push the tag. The
+`release.yml` workflow packs the Library project (only) and publishes it
+to the private `axiomatrix` GitHub Packages feed.
 
-Axiotech Automation Ltd — systems@axiotech.co.uk
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The McpServer Exe is **not** published — it stays a local-build artefact
+referenced from `.mcp.json` by absolute path on each developer machine.
+
+## Consuming the Library
+
+Add a `nuget.config` to the consuming repo:
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="axiomatrix" value="https://nuget.pkg.github.com/axiomatrix/index.json" />
+  </packageSources>
+</configuration>
+```
+
+Authenticate once per machine with a GitHub Personal Access Token that has
+`read:packages` scope on the `axiomatrix` account:
+
+```powershell
+dotnet nuget add source `
+    --username axiomatrix `
+    --password <PAT-with-read:packages> `
+    --store-password-in-clear-text `
+    --name axiomatrix `
+    "https://nuget.pkg.github.com/axiomatrix/index.json"
+```
+
+Then in the consuming `csproj`:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="AxiomCode.TwinCAT.CodeAnalyser" Version="1.0.0" />
+</ItemGroup>
+```
+
+## License
+
+Axiotech Automation Ltd — proprietary, internal use only. See `LICENSE`.

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AxiomCode.TwinCAT.CodeAnalyser.McpServer/AxiomCode.TwinCAT.CodeAnalyser.McpServer.csproj" />
+    <Project Path="src/AxiomCode.TwinCAT.CodeAnalyser/AxiomCode.TwinCAT.CodeAnalyser.csproj" />
+  </Folder>
+</Solution>

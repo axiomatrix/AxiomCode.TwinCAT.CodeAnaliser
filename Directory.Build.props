@@ -1,0 +1,49 @@
+<Project>
+
+  <!--
+    Repo-wide defaults for AxiomCode.TwinCAT.CodeAnalyser. Each csproj in the
+    repo inherits these automatically. Once AxiomCode.Build.Common is adopted
+    via PackageReference, these defaults can be removed in favour of the
+    shared package — until then they are inlined here verbatim so a fresh
+    clone builds without needing GitHub Packages auth.
+  -->
+
+  <PropertyGroup>
+    <!-- Compilation -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);1591;CA1014</NoWarn>
+
+    <!-- Determinism + source link -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- Versioning — overridden by CI from the git tag; default for local dev -->
+    <Version Condition="'$(Version)' == ''">0.1.0-dev</Version>
+    <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.0</FileVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.1.0.0</AssemblyVersion>
+
+    <!-- Package metadata defaults — applies only when IsPackable=true -->
+    <Authors>Axiotech Automation Ltd</Authors>
+    <Company>Axiotech Automation Ltd</Company>
+    <Copyright>Copyright (c) 2026 Axiotech Automation Ltd</Copyright>
+    <PackageProjectUrl>https://github.com/axiomatrix/AxiomCode.TwinCAT.CodeAnaliser</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/axiomatrix/AxiomCode.TwinCAT.CodeAnaliser</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Default to NOT packable; libraries opt in -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true' and Exists('$(MSBuildThisFileDirectory)LICENSE')">
+    <None Include="$(MSBuildThisFileDirectory)LICENSE"   Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsPackable)' == 'true' and Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+
+</Project>

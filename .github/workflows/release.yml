@@ -1,0 +1,75 @@
+name: Release
+
+# Triggered by pushing a semver tag of the form v1.2.3 (or v1.2.3-rc1).
+# Builds the whole solution but only the Library packs to NuGet — the
+# McpServer Exe is a local artefact, registered in .mcp.json by path.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+jobs:
+  pack-and-publish:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Compute version from tag
+        id: version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF##*/}"        # e.g. v1.2.3 or v1.2.3-rc1
+          ver="${tag#v}"                 # strip leading 'v'
+          echo "ver=$ver" >> "$GITHUB_OUTPUT"
+          echo "Computed version: $ver"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore -p:Version=${{ steps.version.outputs.ver }}
+
+      - name: Pack (Library only)
+        run: dotnet pack src/AxiomCode.TwinCAT.CodeAnalyser/AxiomCode.TwinCAT.CodeAnalyser.csproj `
+            --configuration Release --no-build --output artifacts -p:Version=${{ steps.version.outputs.ver }}
+
+      - name: Push packages
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem -Path artifacts -Filter *.nupkg -File
+          if ($packages.Count -eq 0) {
+            Write-Error "No .nupkg files found under artifacts/."
+            exit 1
+          }
+          foreach ($p in $packages) {
+            Write-Host "Pushing $($p.Name)"
+            dotnet nuget push $p.FullName `
+              --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+              --api-key ${{ secrets.GITHUB_TOKEN }} `
+              --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.nupkg
