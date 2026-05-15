@@ -13,3 +13,15 @@ publish/
 
 ## Build artifacts
 *.nupkg
+
+# AI agent working state (Claude Code, etc.)
+# See F:\AI\knowledge\26_full_authority_engineering_model.md (rev 2) §0.
+# These should never exist in the repo; entries below are belt-and-braces
+# in case a session accidentally creates them inside the working tree.
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.claude.json
+.ai_backups/
+.ai_logs/
+.ai_evidence/
