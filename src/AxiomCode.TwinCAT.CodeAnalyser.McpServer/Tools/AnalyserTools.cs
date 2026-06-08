@@ -128,6 +128,69 @@ public class AnalyserTools
         });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tool: twincat_fbd_diagram — graphical (FBD/LD/IL) POU logic as Mermaid
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_fbd_diagram"), Description(
+        "Render the LOGIC of a graphical (FBD / LD / IL) POU as a Mermaid flowchart — " +
+        "a data-flow graph where function-block/operator boxes and operands (variables) " +
+        "are wired by their inputs, outputs and formal parameters, one subgraph per network. " +
+        "Call WITHOUT 'pou' to list the project's graphical POUs; call WITH 'pou' to get its " +
+        "diagram. The returned 'mermaid' field is ready to drop into a ```mermaid block.")]
+    public static string FbdDiagram(
+        AnalyserService analyser,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path,
+        [Description("Optional POU name to render; omit to list all graphical POUs in the project")]
+        string? pou = null)
+    {
+        return RunWithProject(analyser, project_path, project =>
+        {
+            var graphical = project.POUs.Values
+                .Where(p => p.Graphical != null && p.Graphical.Networks.Count > 0)
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (string.IsNullOrWhiteSpace(pou))
+            {
+                return JsonSerializer.Serialize(new
+                {
+                    GraphicalPous = graphical.Select(p => new
+                    {
+                        p.Name,
+                        Language = p.Language.ToString(),
+                        Networks = p.Graphical!.Networks.Count,
+                        Boxes    = p.Graphical!.ReferencedBoxTypes,
+                    }),
+                    Count = graphical.Count,
+                    Hint  = "Call again with pou=<Name> to get that POU's Mermaid logic diagram.",
+                }, JsonOpts);
+            }
+
+            var target = project.POUs.Values.FirstOrDefault(p =>
+                string.Equals(p.Name, pou, StringComparison.OrdinalIgnoreCase));
+            if (target is null)
+                return JsonSerializer.Serialize(new { Error = "PouNotFound", Pou = pou }, JsonOpts);
+            if (target.Graphical is null || target.Graphical.Networks.Count == 0)
+                return JsonSerializer.Serialize(new
+                {
+                    Error    = "NotGraphical",
+                    Pou      = target.Name,
+                    Language = target.Language.ToString(),
+                    Hint     = "This POU isn't FBD/LD/IL (or has no networks); use twincat.read_pou for its ST source.",
+                }, JsonOpts);
+
+            return JsonSerializer.Serialize(new
+            {
+                Pou      = target.Name,
+                Language = target.Language.ToString(),
+                Networks = target.Graphical.Networks.Count,
+                Mermaid  = FbdDiagramRenderer.ToMermaid(target),
+            }, JsonOpts);
+        });
+    }
+
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Tool 3: twincat_alarm_list
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
