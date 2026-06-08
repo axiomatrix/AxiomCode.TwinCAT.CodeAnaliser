@@ -34,7 +34,11 @@ public class AnalyserTools
     {
         try
         {
-            var project = analyser.AnalyseProject(project_path);
+            // Read the canonical, fingerprinted source-of-truth model: parse once
+            // and persist, so repeated tool calls (and the documentation generator,
+            // which shares the same on-disk store) reuse one analysis instead of
+            // re-parsing the whole tree. Cache miss falls through to AnalyseProject.
+            var project = new ProjectKnowledgeStore(analyser).GetOrBuild(project_path).Project;
             return body(project);
         }
         catch (DirectoryNotFoundException ex)
