@@ -23,6 +23,11 @@ public class TcPou
     public List<TcVariable> Variables { get; set; } = new();
     public List<TcMethod> Methods { get; set; } = new();
     public List<TcProperty> Properties { get; set; } = new();
+    public List<TcAction> Actions { get; set; } = new();
+
+    /// <summary>POU-level pragmas/attributes, e.g. <c>{attribute 'hide'}</c>,
+    /// <c>{attribute 'reflection'}</c>. Previously captured for DUTs/GVLs only.</summary>
+    public List<string> Attributes { get; set; } = new();
 
     // Raw text
     public string RawDeclaration { get; set; } = "";

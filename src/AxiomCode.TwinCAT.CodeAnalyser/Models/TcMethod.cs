@@ -18,4 +18,7 @@ public class TcMethod
     public string Body { get; set; } = "";
     public List<TcVariable> LocalVars { get; set; } = new();
     public List<TcVariable> Parameters { get; set; } = new();
+
+    /// <summary>Method-level pragmas/attributes, e.g. <c>{attribute 'call_after_init'}</c>.</summary>
+    public List<string> Attributes { get; set; } = new();
 }

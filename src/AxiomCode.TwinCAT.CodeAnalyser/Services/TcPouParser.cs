@@ -47,6 +47,21 @@ public static class TcPouParser
         @"\s*:\s*(?<type>.+?)\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // ── {attribute 'name'} pragmas (POU / method / property level) ──────
+    private static readonly Regex AttributeRegex = new(
+        @"\{attribute\s+'(?<attr>[^']+)'\}",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Extract every <c>{attribute 'name'}</c> pragma from a declaration.</summary>
+    private static List<string> ExtractAttributes(string declaration)
+    {
+        var list = new List<string>();
+        if (string.IsNullOrEmpty(declaration)) return list;
+        foreach (Match m in AttributeRegex.Matches(declaration))
+            list.Add(m.Groups["attr"].Value);
+        return list;
+    }
+
     /// <summary>
     /// Parse a .TcPOU file and return a <see cref="TcPou"/> or null on failure.
     /// </summary>
@@ -76,6 +91,7 @@ public static class TcPouParser
             {
                 ParsePouHeader(declaration, pou);
                 pou.Variables.AddRange(ParseVarBlocks(declaration));
+                pou.Attributes = ExtractAttributes(declaration);
             }
 
             // ── Implementation ──────────────────────────────────────
@@ -108,7 +124,10 @@ public static class TcPouParser
             {
                 var method = ParseMethod(methodEl);
                 if (method != null)
+                {
+                    method.Attributes = ExtractAttributes(method.RawDeclaration);
                     pou.Methods.Add(method);
+                }
             }
 
             // ── Properties ──────────────────────────────────────────
@@ -116,7 +135,20 @@ public static class TcPouParser
             {
                 var prop = ParseProperty(propEl);
                 if (prop != null)
+                {
+                    prop.Attributes = ExtractAttributes(prop.RawDeclaration);
                     pou.Properties.Add(prop);
+                }
+            }
+
+            // ── Actions ─────────────────────────────────────────────
+            // Actions share the POU's scope (no declaration) and may be ST or
+            // graphical. Previously dropped — only <Method>/<Property> were walked.
+            foreach (var actEl in pouElement.Elements("Action"))
+            {
+                var action = ParseAction(actEl);
+                if (action != null)
+                    pou.Actions.Add(action);
             }
 
             return pou;
@@ -131,6 +163,33 @@ public static class TcPouParser
     // ════════════════════════════════════════════════════════════════════
     //  POU header parsing
     // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>Parse an &lt;Action&gt; element (ST or graphical body) attached to a POU.</summary>
+    private static TcAction? ParseAction(XElement actEl)
+    {
+        var name = actEl.Attribute("Name")?.Value;
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var action = new TcAction { Name = name };
+
+        var impl = actEl.Element("Implementation");
+        var st = impl?.Element("ST");
+        if (st != null)
+        {
+            action.Body = ExtractCdata(st);
+            action.Language = string.IsNullOrWhiteSpace(action.Body) ? ImplLanguage.None : ImplLanguage.ST;
+        }
+        else if (NwlGraphicalParser.IsGraphical(impl))
+        {
+            var g = NwlGraphicalParser.Parse(impl);
+            if (g != null)
+            {
+                action.Graphical = g;
+                action.Language = g.Language;
+                action.Body = g.StEquivalent;
+            }
+        }
+        return action;
+    }
 
     private static void ParsePouHeader(string declaration, TcPou pou)
     {

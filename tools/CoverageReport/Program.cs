@@ -25,6 +25,7 @@ static void Report(string root)
 
     var lang = new Dictionary<ImplLanguage, int>();
     int methods = 0, props = 0, getters = 0, setters = 0, vars = 0, gNetworks = 0, gNodes = 0, parseFail = 0;
+    int capActions = 0, capPouAttrs = 0, capMethodAttrs = 0, capPropAttrs = 0;
     var varScopes = new Dictionary<VarScope, int>();
 
     // Drop detectors (raw-XML, independent of the parser).
@@ -47,6 +48,10 @@ static void Report(string root)
         setters += pou.Properties.Count(p => p.HasSetter);
         vars += pou.Variables.Count;
         foreach (var v in pou.Variables) varScopes[v.Scope] = varScopes.GetValueOrDefault(v.Scope) + 1;
+        capActions += pou.Actions.Count;
+        capPouAttrs += pou.Attributes.Count;
+        capMethodAttrs += pou.Methods.Sum(m => m.Attributes.Count);
+        capPropAttrs += pou.Properties.Sum(p => p.Attributes.Count);
         if (pou.Graphical is { } g)
         {
             gNetworks += g.Networks.Count;
@@ -114,12 +119,13 @@ static void Report(string root)
     Console.WriteLine($"  DUTs: struct={dutStruct} enum={dutEnum} union={dutUnion} alias={dutAlias}  enumMembers={enumMembers} structMembers={structMembers}");
     Console.WriteLine($"  GVL vars={gvlVars}");
     Console.WriteLine($"  Graphical: networks={gNetworks} nodes={gNodes}");
+    Console.WriteLine($"  Actions={capActions}  Attributes: pou={capPouAttrs} method={capMethodAttrs} prop={capPropAttrs}");
     Console.WriteLine();
     Console.WriteLine("## Remaining drops (raw-XML present but not fully modelled)");
     Console.WriteLine($"  Graphical METHOD bodies not decoded : {graphicalMethodBodies}");
     Console.WriteLine($"  Graphical PROPERTY accessor bodies   : {graphicalPropBodies}");
     Console.WriteLine($"  SFC/CFC POU bodies (detected only)   : {sfcCfcPous}");
-    Console.WriteLine($"  <Action> elements (not modelled)     : {rawActions}");
+    Console.WriteLine($"  <Action> elements (raw {rawActions} − captured {capActions}) : {rawActions - capActions}");
     Console.WriteLine($"  <Transition> elements (not modelled) : {rawTransitions}");
-    Console.WriteLine($"  POUs with declaration pragmas (POU-level attrs dropped): {pouPragmas}");
+    Console.WriteLine($"  POUs w/ decl pragmas (raw {pouPragmas}; now captured {capPouAttrs} attrs across POUs): {(capPouAttrs > 0 ? 0 : pouPragmas)}");
 }
