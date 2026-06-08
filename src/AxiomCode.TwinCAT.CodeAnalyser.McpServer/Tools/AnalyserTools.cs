@@ -8,7 +8,7 @@ using AxiomCode.TwinCAT.CodeAnalyser.Services;
 namespace AxiomCode.TwinCAT.CodeAnalyser.Tools;
 
 [McpServerToolType]
-public class AnalyzerTools
+public class AnalyserTools
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -17,21 +17,76 @@ public class AnalyzerTools
         Converters = { new JsonStringEnumConverter() }
     };
 
+    /// <summary>
+    /// Run a project-scoped tool body with structured error reporting.
+    /// Wraps <see cref="AnalyserService.AnalyseProject"/> so misspelled or
+    /// non-TwinCAT paths surface as JSON `{ "Error": ..., "Hint": ... }`
+    /// rather than either (a) throwing an MCP framework-level exception
+    /// that the LLM can't parse, or (b) silently succeeding with an empty
+    /// 0/0/0 project that gets rendered as a valid result. Every tool that
+    /// takes a project_path goes through this helper so the failure mode
+    /// is uniform.
+    /// </summary>
+    private static string RunWithProject(
+        AnalyserService analyser,
+        string project_path,
+        Func<TcProject, string> body)
+    {
+        try
+        {
+            var project = analyser.AnalyseProject(project_path);
+            return body(project);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                Error = "DirectoryNotFound",
+                ex.Message,
+                ProjectPath = project_path,
+                Hint = "Re-check separators in the path (underscore vs hyphen, " +
+                       "dot vs dash). TwinCAT folder names often mix '_' and '-' " +
+                       "asymmetrically — verify against the actual on-disk name " +
+                       "before retrying."
+            }, JsonOpts);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No TwinCAT source files", StringComparison.Ordinal))
+        {
+            return JsonSerializer.Serialize(new
+            {
+                Error = "NotATwinCatProject",
+                ex.Message,
+                ProjectPath = project_path,
+                Hint = "Point at the folder containing the .plcproj file. " +
+                       "TwinCAT projects nest as <Solution>/<Project>/<PlcProject>/<PlcProject>/, " +
+                       "with the .TcPOU/.TcDUT/.TcGVL files in subfolders below."
+            }, JsonOpts);
+        }
+        catch (ArgumentException ex)
+        {
+            return JsonSerializer.Serialize(new
+            {
+                Error = "InvalidArgument",
+                ex.Message,
+                ProjectPath = project_path
+            }, JsonOpts);
+        }
+    }
+
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Tool 1: twincat_analyze
+    // Tool 1: twincat_analyse
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    [McpServerTool(Name = "twincat_analyze"), Description(
-        "Analyze a TwinCAT 3 PLC project. Returns summary statistics including " +
+    [McpServerTool(Name = "twincat_analyse"), Description(
+        "Analyse a TwinCAT 3 PLC project. Returns summary statistics including " +
         "POU/DUT/GVL counts, alarm totals by severity, state machine count, IO point count, " +
         "and unresolved types. Point at the directory containing .TcPOU/.TcGVL files.")]
-    public static string Analyze(
-        AnalyzerService analyzer,
+    public static string Analyse(
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory (containing .TcPOU, .TcDUT, .TcGVL files)")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(new
+        return RunWithProject(analyser, project_path, project => JsonSerializer.Serialize(new
         {
             project.Name,
             project.ProjectPath,
@@ -39,7 +94,7 @@ public class AnalyzerTools
             project.Summary,
             UnresolvedTypes = project.UnresolvedTypes.OrderBy(t => t).ToList(),
             RootObjects = project.ObjectTree.Select(n => new { n.InstanceName, n.TypeName, n.Layer, AlarmCount = CountAlarms(n) })
-        }, JsonOpts);
+        }, JsonOpts));
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -52,19 +107,21 @@ public class AnalyzerTools
         "alarm analysis, state machine diagrams with code drill-down, IO mappings, " +
         "search, filtering, and documentation.")]
     public static string GenerateHtml(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path,
         [Description("Path where the HTML file should be saved (e.g. 'C:/output/project_analysis.html')")]
         string output_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        HtmlGenerator.Generate(project, output_path);
-        return $"HTML viewer generated successfully.\n" +
-               $"Output: {output_path}\n" +
-               $"Project: {project.Name}\n" +
-               $"POUs: {project.Summary.PouCount}, Alarms: {project.Summary.TotalAlarms}, " +
-               $"State Machines: {project.Summary.StateMachineCount}, IO Points: {project.Summary.IoPointCount}";
+        return RunWithProject(analyser, project_path, project =>
+        {
+            HtmlGenerator.Generate(project, output_path);
+            return $"HTML viewer generated successfully.\n" +
+                   $"Output: {output_path}\n" +
+                   $"Project: {project.Name}\n" +
+                   $"POUs: {project.Summary.PouCount}, Alarms: {project.Summary.TotalAlarms}, " +
+                   $"State Machines: {project.Summary.StateMachineCount}, IO Points: {project.Summary.IoPointCount}";
+        });
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -76,12 +133,12 @@ public class AnalyzerTools
         "Each alarm includes severity, trigger condition, delay, module path, " +
         "variable path, and reason if severity is unresolved.")]
     public static string AlarmList(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.AllAlarms, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.AllAlarms, JsonOpts));
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -93,20 +150,20 @@ public class AnalyzerTools
         "transitions with conditions and timeouts, and code bodies per state. " +
         "Optionally filter by module name.")]
     public static string StateMachines(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path,
         [Description("Optional: filter by POU/module name (e.g. 'CM_Sealer')")]
         string? module_name = null)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        var machines = project.AllStateMachines.AsEnumerable();
-
-        if (!string.IsNullOrEmpty(module_name))
-            machines = machines.Where(sm =>
-                sm.OwnerPou.Contains(module_name, StringComparison.OrdinalIgnoreCase));
-
-        return JsonSerializer.Serialize(machines.ToList(), JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+        {
+            var machines = project.AllStateMachines.AsEnumerable();
+            if (!string.IsNullOrEmpty(module_name))
+                machines = machines.Where(sm =>
+                    sm.OwnerPou.Contains(module_name, StringComparison.OrdinalIgnoreCase));
+            return JsonSerializer.Serialize(machines.ToList(), JsonOpts);
+        });
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -118,16 +175,16 @@ public class AnalyzerTools
         "Returns variables, methods, properties, inheritance chain, " +
         "alarms, state machines, and IO mappings.")]
     public static string ModuleInfo(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path,
         [Description("Module/POU name (e.g. 'CM_Sealer', 'EM_Fill', 'UM_Machine')")]
         string module_name)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-
-        if (!project.POUs.TryGetValue(module_name, out var pou))
-            return $"Module '{module_name}' not found. Available: {string.Join(", ", project.POUs.Keys.OrderBy(k => k))}";
+        return RunWithProject(analyser, project_path, project =>
+        {
+            if (!project.POUs.TryGetValue(module_name, out var pou))
+                return $"Module '{module_name}' not found. Available: {string.Join(", ", project.POUs.Keys.OrderBy(k => k))}";
 
         var alarms = project.AllAlarms.Where(a =>
             a.ModuleType.Equals(module_name, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -138,21 +195,22 @@ public class AnalyzerTools
         var ioMappings = project.AllIoMappings.Where(io =>
             (io.SourcePou ?? "").Equals(module_name, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        return JsonSerializer.Serialize(new
-        {
-            pou.Name,
-            pou.PouType,
-            pou.IsAbstract,
-            pou.ExtendsType,
-            pou.InheritanceChain,
-            pou.ImplementsList,
-            Variables = pou.Variables.Select(v => new { v.Name, v.DataType, v.Scope, v.IsReference, v.IsArray, v.AtBinding, v.ConstructorArgs, v.Comment, v.LeadingComment }),
-            Methods = pou.Methods.Select(m => new { m.Name, m.Visibility, m.ReturnType, m.FolderPath }),
-            Properties = pou.Properties.Select(p => new { p.Name, p.DataType, p.HasGetter, p.HasSetter, p.FolderPath }),
-            Alarms = alarms,
-            StateMachines = stateMachines,
-            IoMappings = ioMappings
-        }, JsonOpts);
+            return JsonSerializer.Serialize(new
+            {
+                pou.Name,
+                pou.PouType,
+                pou.IsAbstract,
+                pou.ExtendsType,
+                pou.InheritanceChain,
+                pou.ImplementsList,
+                Variables = pou.Variables.Select(v => new { v.Name, v.DataType, v.Scope, v.IsReference, v.IsArray, v.AtBinding, v.ConstructorArgs, v.Comment, v.LeadingComment }),
+                Methods = pou.Methods.Select(m => new { m.Name, m.Visibility, m.ReturnType, m.FolderPath }),
+                Properties = pou.Properties.Select(p => new { p.Name, p.DataType, p.HasGetter, p.HasSetter, p.FolderPath }),
+                Alarms = alarms,
+                StateMachines = stateMachines,
+                IoMappings = ioMappings
+            }, JsonOpts);
+        });
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -164,12 +222,12 @@ public class AnalyzerTools
         "Returns variable name, data type, AT address, direction (Input/Output/Memory), " +
         "and source GVL or POU.")]
     public static string IoMap(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.AllIoMappings, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.AllIoMappings, JsonOpts));
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -190,12 +248,12 @@ public class AnalyzerTools
         "Returns library name, namespace, default resolution, resolved version lock, " +
         "and vendor for every PlaceholderReference / PlaceholderResolution discovered.")]
     public static string Libraries(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.LibraryDependencies, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.LibraryDependencies, JsonOpts));
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -209,12 +267,12 @@ public class AnalyzerTools
         "Returns per-artifact metadata, related-file references, and for alias devices " +
         "the SDSID and IO entries.")]
     public static string Safety(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.SafetyArtifacts, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.SafetyArtifacts, JsonOpts));
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -227,12 +285,12 @@ public class AnalyzerTools
         "configuration with recursive parameter tree, linked TwinCAT project path, " +
         "and IO item path name).")]
     public static string Drives(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.DriveManagerArtifacts, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.DriveManagerArtifacts, JsonOpts));
     }
 
     // ──────────────────────────────────────────────────────────────────
@@ -245,11 +303,125 @@ public class AnalyzerTools
         "signal list, symbol/transformation/enabled counts, and a human-readable " +
         "description of the configuration).")]
     public static string Scopes(
-        AnalyzerService analyzer,
+        AnalyserService analyser,
         [Description("Path to the TwinCAT PLC project directory")]
         string project_path)
     {
-        var project = analyzer.AnalyzeProject(project_path);
-        return JsonSerializer.Serialize(project.ScopeArtifacts, JsonOpts);
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(project.ScopeArtifacts, JsonOpts));
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    // Tool 11: twincat_get_fingerprint_symbols
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Scalar PLC primitives that are safe to probe via ads_read on any TwinCAT runtime.
+    /// Composite/FB/structure types are excluded because they need ads_read_structure
+    /// and add no extra discriminating power for fingerprinting.
+    /// </summary>
+    private static readonly HashSet<string> ScalarPlcTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "BOOL",
+        "BYTE", "WORD", "DWORD", "LWORD",
+        "SINT", "USINT", "INT", "UINT", "DINT", "UDINT", "LINT", "ULINT",
+        "REAL", "LREAL",
+        "STRING", "WSTRING",
+        "TIME", "LTIME", "TIME_OF_DAY", "TOD", "DATE", "DATE_AND_TIME", "DT"
+    };
+
+    /// <summary>
+    /// GVL namespaces shipped by TwinCAT/Beckhoff libraries. These appear in *.library
+    /// dependencies, not in the user's .TcGVL files, but they're filtered defensively
+    /// in case a project ever surfaces one.
+    /// </summary>
+    private static readonly string[] FrameworkGvlPrefixes = new[]
+    {
+        "Tc_", "Tc2_", "Tc3_",
+        "_3S_", "_Implicit_",
+        "Constants",
+        "Events",
+        "GlobalAlarmEvents",
+        "TwinCAT_SystemInfoVarList"
+    };
+
+    [McpServerTool(Name = "twincat_get_fingerprint_symbols"), Description(
+        "Pick a set of project-specific ADS symbols suitable for verifying that a remote " +
+        "PLC is running this codebase. Walks the user-authored GVLs, filters out TwinCAT/" +
+        "Beckhoff framework namespaces, and selects scalar (BOOL/INT/REAL/STRING/...) entries " +
+        "whose full instance path is `GvlName.VarName`. Pair the returned `Symbols` array with " +
+        "ads_fingerprint_match to confirm 'this NetID is the PLC running my known TwinCAT project'. " +
+        "More reliable than UDP/48899 discovery alone, and works through any successful ADS connect.")]
+    public static string GetFingerprintSymbols(
+        AnalyserService analyser,
+        [Description("Path to the TwinCAT PLC project directory (containing .TcPOU, .TcDUT, .TcGVL files)")]
+        string project_path,
+        [Description("Maximum number of fingerprint symbols to return (default 10).")]
+        int count = 10)
+    {
+        return RunWithProject(analyser, project_path, project =>
+        {
+            if (count <= 0) count = 10;
+
+        var candidates = new List<object>();
+
+        // Walk every GVL in the parsed project.
+        foreach (var gvl in project.GVLs.Values.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (IsFrameworkGvl(gvl.Name)) continue;
+
+            foreach (var v in gvl.Variables)
+            {
+                // Skip constants and externals; they're stable but less useful since their
+                // presence proves library identity, not project identity.
+                if (v.Scope == VarScope.Constant) continue;
+
+                // Reject reference / pointer / array bindings — ads_read can't dereference them directly.
+                if (v.IsReference || v.IsPointer || v.IsArray) continue;
+                if (string.IsNullOrWhiteSpace(v.Name)) continue;
+
+                var bareType = v.DataType?.Trim() ?? "";
+                if (string.IsNullOrEmpty(bareType)) continue;
+
+                // Trim "STRING(80)" → "STRING" for the scalar test.
+                int paren = bareType.IndexOf('(');
+                var typeKey = paren > 0 ? bareType.Substring(0, paren) : bareType;
+                if (!ScalarPlcTypes.Contains(typeKey)) continue;
+
+                candidates.Add(new
+                {
+                    Symbol = $"{gvl.Name}.{v.Name}",
+                    Gvl    = gvl.Name,
+                    Var    = v.Name,
+                    Type   = bareType,
+                    Scope  = v.Scope.ToString(),
+                    HasAt  = !string.IsNullOrEmpty(v.AtBinding),
+                    Comment= v.Comment
+                });
+            }
+        }
+
+            var picked  = candidates.Take(count).ToList();
+            var symbols = picked.Select(c => (string)c.GetType().GetProperty("Symbol")!.GetValue(c)!).ToList();
+
+            return JsonSerializer.Serialize(new
+            {
+                Project       = project.Name,
+                ProjectPath   = project.ProjectPath,
+                Available     = candidates.Count,
+                Returned      = picked.Count,
+                Symbols       = symbols,   // pass straight into ads_fingerprint_match
+                Detail        = picked,
+                Usage         = "Pass `Symbols` as `fingerprintSymbols` to ads_fingerprint_match after ads_connect."
+            }, JsonOpts);
+        });
+    }
+
+    private static bool IsFrameworkGvl(string gvlName)
+    {
+        foreach (var p in FrameworkGvlPrefixes)
+            if (gvlName.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
     }
 }

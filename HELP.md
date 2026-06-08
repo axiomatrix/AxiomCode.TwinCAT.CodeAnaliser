@@ -71,7 +71,7 @@ The server runs on **stdio** transport — it reads JSON-RPC from stdin and writ
 
 ## MCP Tools Reference
 
-### 1. `twincat_analyze`
+### 1. `twincat_analyse`
 
 **Full project analysis.** Returns a JSON summary of the entire project.
 
@@ -256,13 +256,13 @@ Scans all GVL and POU variables for `AT` bindings:
 
 ## Caching
 
-The analyzer caches results per project path within each session. Subsequent tool calls against the same project return instantly. The cache is cleared when the MCP server restarts.
+The analyser caches results per project path within each session. Subsequent tool calls against the same project return instantly. The cache is cleared when the MCP server restarts.
 
 ---
 
 ## Limitations
 
-- **Compiled libraries** — Types defined in `.compiled-library` files (e.g. `DM_TriggeredLatch`, `TExecution`, `TClock`) cannot be parsed. They appear in the `unresolvedTypes` list. The analyzer knows about `DM_TriggeredLatch` and `DM_StateMachine` by name for alarm and state machine detection.
+- **Compiled libraries** — Types defined in `.compiled-library` files (e.g. `DM_TriggeredLatch`, `TExecution`, `TClock`) cannot be parsed. They appear in the `unresolvedTypes` list. The analyser knows about `DM_TriggeredLatch` and `DM_StateMachine` by name for alarm and state machine detection.
 
 - **REFERENCE TO recursion** — Variables declared as `REFERENCE TO` are shown as link nodes but not recursed into, since they point to instances owned elsewhere. This means the tree may not include alarm paths through reference chains.
 

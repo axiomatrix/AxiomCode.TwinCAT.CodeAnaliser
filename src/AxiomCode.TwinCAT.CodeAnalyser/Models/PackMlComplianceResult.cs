@@ -5,7 +5,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Models;
 /// to validate transitions, operator-command bindings, mode coverage, and error
 /// propagation against the canonical PackML / OMAC PackTags v3 specification.
 ///
-/// Produced by <see cref="Services.PackMlAnalyzer"/>; consumed by:
+/// Produced by <see cref="Services.PackMlAnalyser"/>; consumed by:
 ///   - <see cref="ComplianceChecker"/> as a fifth standard
 ///   - The dedicated PackML tab in TwinStack's Analysis page
 ///   - The SDS Appendix D conformance matrix

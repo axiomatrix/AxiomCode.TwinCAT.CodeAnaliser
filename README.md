@@ -22,7 +22,7 @@ AxiomCode.TwinCAT.CodeAnalyser/
 ├── src/
 │   ├── AxiomCode.TwinCAT.CodeAnalyser/                  # Library
 │   │   ├── Models/                                      # public types: TcProject, TcPou, …
-│   │   ├── Services/                                    # AnalyzerService, ComplianceChecker, …
+│   │   ├── Services/                                    # AnalyserService, ComplianceChecker, …
 │   │   ├── Templates/                                   # embedded HTML viewer assets
 │   │   └── AxiomCode.TwinCAT.CodeAnalyser.csproj
 │   └── AxiomCode.TwinCAT.CodeAnalyser.McpServer/        # MCP server Exe shim
@@ -46,7 +46,7 @@ Public namespaces (consumed today by [TwinStack.AIPlatform](https://github.com/a
 | Namespace | Contents |
 | --- | --- |
 | `AxiomCode.TwinCAT.CodeAnalyser.Models` | `TcProject`, `TcPou`, `TcDut`, `TcGvl`, `TcMethod`, `TcVariable`, `StateMachine`, `AlarmInfo`, `IsaLayer`, `VarScope`, `PackMlComplianceResult`, `StandardCompliance`, `ModuleCompliance`, `ProjectCompliance`, `ComplianceLevel` |
-| `AxiomCode.TwinCAT.CodeAnalyser.Services` | `AnalyzerService` (pipeline entry point), `ComplianceChecker` (10-standard compliance), `PackMlAnalyzer`, `AlarmDescriptionEnricher`, `HtmlGenerator` |
+| `AxiomCode.TwinCAT.CodeAnalyser.Services` | `AnalyserService` (pipeline entry point), `ComplianceChecker` (10-standard compliance), `PackMlAnalyser`, `AlarmDescriptionEnricher`, `HtmlGenerator` |
 
 Minimal usage:
 
@@ -54,8 +54,8 @@ Minimal usage:
 using Microsoft.Extensions.Logging.Abstractions;
 using AxiomCode.TwinCAT.CodeAnalyser.Services;
 
-var analyzer = new AnalyzerService(NullLogger<AnalyzerService>.Instance);
-var project  = analyzer.AnalyzeProject(@"D:\path\to\project.plcproj");
+var analyser = new AnalyserService(NullLogger<AnalyserService>.Instance);
+var project  = analyser.AnalyseProject(@"D:\path\to\project.plcproj");
 
 Console.WriteLine($"{project.Summary.PouCount} POUs, {project.Summary.TotalAlarms} alarms");
 ```
@@ -66,7 +66,7 @@ Tool catalogue surfaced over stdio to Claude Code / Claude Desktop:
 
 | Tool | Description |
 | --- | --- |
-| `twincat_analyze` | Full project analysis — returns summary JSON |
+| `twincat_analyse` | Full project analysis — returns summary JSON |
 | `twincat_generate_html` | Generate interactive HTML viewer |
 | `twincat_alarm_list` | Extract flat alarm list |
 | `twincat_state_machines` | State machines with states + transitions |

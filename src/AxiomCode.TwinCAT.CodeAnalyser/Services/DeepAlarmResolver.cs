@@ -6,7 +6,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 /// <summary>
 /// Second-pass alarm severity resolver.
 ///
-/// The first-pass <see cref="AlarmAnalyzer"/> analyses each POU in isolation. Many
+/// The first-pass <see cref="AlarmAnalyser"/> analyses each POU in isolation. Many
 /// alarms therefore fall into the <see cref="UnresolvedReason.BaseClass"/> bucket
 /// because the POU declaring the alarm extends a base class directly while the
 /// actual <c>_AlarmsPresent...</c> severity blocks live in a descendant or in a
@@ -36,7 +36,7 @@ public static class DeepAlarmResolver
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     /// <summary>
-    /// Run after <see cref="AlarmAnalyzer.Analyze"/>. Walks every POU's methods
+    /// Run after <see cref="AlarmAnalyser.Analyse"/>. Walks every POU's methods
     /// for <c>_AlarmsPresentX :=</c> blocks, builds a name-to-severity index,
     /// then rebinds eligible Unresolved alarms.
     /// </summary>

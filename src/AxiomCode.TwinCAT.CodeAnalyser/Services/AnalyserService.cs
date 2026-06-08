@@ -7,22 +7,60 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 /// Orchestrates TwinCAT project parsing and analysis.
 /// Caches results per project path for efficiency.
 /// </summary>
-public class AnalyzerService
+public class AnalyserService
 {
-    private readonly ILogger<AnalyzerService> _logger;
+    private readonly ILogger<AnalyserService> _logger;
     private readonly Dictionary<string, TcProject> _cache = new();
 
-    public AnalyzerService(ILogger<AnalyzerService> logger)
+    public AnalyserService(ILogger<AnalyserService> logger)
     {
         _logger = logger;
     }
 
     /// <summary>
-    /// Analyze a TwinCAT PLC project. Returns cached result if available.
+    /// Analyse a TwinCAT PLC project. Returns cached result if available.
     /// </summary>
-    public TcProject AnalyzeProject(string projectPath)
+    /// <exception cref="DirectoryNotFoundException">
+    /// Thrown when <paramref name="projectPath"/> does not exist on disk.
+    /// Prevents the silent empty-success result that caused downstream
+    /// consumers (LLM tool callers, doc generators) to render a misspelled
+    /// path's "0 POUs" reply as a valid empty project.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the path exists but contains no TwinCAT source files
+    /// (no .TcPOU, .TcDUT, or .TcGVL anywhere in the subtree). Distinct
+    /// from DirectoryNotFoundException so callers can give a different
+    /// hint ("path resolves but isn't a TwinCAT project — point at the
+    /// folder containing the .plcproj / .TcPOU files").
+    /// </exception>
+    public TcProject AnalyseProject(string projectPath)
     {
+        // ── Guard #1: input must be non-null / non-empty. Catches null
+        // arguments before Path.GetFullPath throws an unhelpful ArgumentNullException.
+        if (string.IsNullOrWhiteSpace(projectPath))
+            throw new ArgumentException(
+                "project_path is empty. Pass the directory containing the " +
+                "TwinCAT plcproject (.TcPOU/.TcDUT/.TcGVL files).",
+                nameof(projectPath));
+
         var normalizedPath = Path.GetFullPath(projectPath);
+
+        // ── Guard #2: directory must exist on disk. Without this guard a
+        // misspelled path silently returns an empty-success result with
+        // zero POUs/DUTs/GVLs, which downstream consumers interpret as
+        // "valid empty project" — propagating the typo into reports.
+        // Real-world repro: model emitted "beckhoff-training-rig-elevator"
+        // (all hyphens) for a folder actually named
+        // "beckhoff-training_rig-elevator" (underscore between training and
+        // rig); analyser cheerfully returned 0 POUs instead of failing.
+        if (!Directory.Exists(normalizedPath))
+        {
+            throw new DirectoryNotFoundException(
+                $"TwinCAT project directory not found: '{normalizedPath}'. " +
+                $"Check the path — TwinCAT projects typically nest the " +
+                $".TcPOU/.TcDUT/.TcGVL files under " +
+                $"<Solution>/<Project>/<PlcProject>/<PlcProject>/.");
+        }
 
         if (_cache.TryGetValue(normalizedPath, out var cached))
         {
@@ -60,14 +98,30 @@ public class AnalyzerService
         _logger.LogInformation("Parsed {P} POUs, {D} DUTs, {G} GVLs",
             project.POUs.Count, project.DUTs.Count, project.GVLs.Count);
 
+        // ── Guard #3: at least one TwinCAT source file must have been
+        // found. If we got here with 0/0/0 the path resolves but doesn't
+        // point at a TwinCAT project (common cause: caller passed the
+        // build output folder, a docs folder, or the repo root from a
+        // multi-project solution). Cache the empty project before throwing
+        // so a follow-up call with the same wrong path doesn't repeat
+        // the disk walk.
+        if (project.POUs.Count == 0 && project.DUTs.Count == 0 && project.GVLs.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No TwinCAT source files found under '{normalizedPath}'. " +
+                $"The directory exists but contains no .TcPOU, .TcDUT, or .TcGVL " +
+                $"files. Point at the folder containing the .plcproj — typically " +
+                $"two levels above where the source folders (POUs/, DUTs/, GVLs/) live.");
+        }
+
         // Step 3: Resolve inheritance
         InheritanceResolver.Resolve(project);
 
         // Step 4: Build object tree
         ObjectTreeBuilder.Build(project);
 
-        // Step 5: Analyze alarms (per-POU first pass)
-        AlarmAnalyzer.Analyze(project);
+        // Step 5: Analyse alarms (per-POU first pass)
+        AlarmAnalyser.Analyse(project);
 
         // Step 5b: Cross-POU deep alarm severity resolution.
         // Resolves the BaseClass-driven Unresolved bucket by scanning every

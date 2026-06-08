@@ -7,7 +7,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 /// Extracts and categorises all DM_TriggeredLatch alarms from the object tree.
 /// Populates <see cref="TcProject.AllAlarms"/> and each <see cref="ObjectTreeNode.Alarms"/> list.
 /// </summary>
-public static class AlarmAnalyzer
+public static class AlarmAnalyser
 {
     // ── Severity assignment regex ──────────────────────────────────────
     // Matches _AlarmsPresentCritical := ...; blocks (multiline, terminated by semicolon)
@@ -49,7 +49,7 @@ public static class AlarmAnalyzer
     /// Main entry point. Call after <see cref="ObjectTreeBuilder.Build"/> and
     /// <see cref="InheritanceResolver.Resolve"/> have run.
     /// </summary>
-    public static void Analyze(TcProject project)
+    public static void Analyse(TcProject project)
     {
         project.AllAlarms.Clear();
 

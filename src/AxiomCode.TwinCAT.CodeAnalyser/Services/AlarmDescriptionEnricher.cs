@@ -24,7 +24,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 /// </summary>
 public static class AlarmDescriptionEnricher
 {
-    /// <summary>Run after AlarmAnalyzer + DeepAlarmResolver — pure deterministic.</summary>
+    /// <summary>Run after AlarmAnalyser + DeepAlarmResolver — pure deterministic.</summary>
     public static void ApplyHeuristic(TcProject project)
     {
         foreach (var alarm in project.AllAlarms)

@@ -415,7 +415,7 @@ public static class ComplianceChecker
         // breakdown (states, transitions, commands, modes, errors). We surface
         // it as one row in the Compliance list with a RAG badge + score %, and
         // attach the detail block for the Expander body.
-        var detail = PackMlAnalyzer.Analyse(pou, sms);
+        var detail = PackMlAnalyser.Analyse(pou, sms);
 
         const string desc = "OMAC / ISA-88 machine state model — 14 canonical states, transitions, commands, modes, errors";
 

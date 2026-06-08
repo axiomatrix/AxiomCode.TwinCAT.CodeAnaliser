@@ -25,7 +25,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 /// rather than guessing — false negatives are safer than false positives in
 /// regulated audit context.
 /// </summary>
-public static class PackMlAnalyzer
+public static class PackMlAnalyser
 {
     private static readonly string[] CoreStates =
         { "Idle", "Execute", "Stopped", "Resetting" };

@@ -17,7 +17,7 @@ if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "/?
     Console.WriteLine("  AxiomCode.TwinCAT.CodeAnalyser.exe --test <path> Run test analysis on a project");
     Console.WriteLine();
     Console.WriteLine("MCP Tools:");
-    Console.WriteLine("  twincat_analyze          Full project analysis");
+    Console.WriteLine("  twincat_analyse          Full project analysis");
     Console.WriteLine("  twincat_generate_html    Generate interactive HTML viewer");
     Console.WriteLine("  twincat_alarm_list       Extract alarm list");
     Console.WriteLine("  twincat_state_machines   Extract state machines");
@@ -37,12 +37,12 @@ if (args.Length > 0 && (args[0] == "--help" || args[0] == "-h" || args[0] == "/?
 if (args.Length >= 2 && args[0] == "--test")
 {
     var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
-    var logger = loggerFactory.CreateLogger<AnalyzerService>();
-    var analyzer = new AnalyzerService(logger);
+    var logger = loggerFactory.CreateLogger<AnalyserService>();
+    var analyser = new AnalyserService(logger);
 
     try
     {
-        var project = analyzer.AnalyzeProject(args[1]);
+        var project = analyser.AnalyseProject(args[1]);
 
         Console.WriteLine($"\n{"═".PadRight(80, '═')}");
         Console.WriteLine($"PROJECT: {project.Name}");
@@ -109,7 +109,7 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace);
 
-builder.Services.AddSingleton<AnalyzerService>();
+builder.Services.AddSingleton<AnalyserService>();
 
 builder.Services.AddMcpServer()
     .WithStdioServerTransport()
