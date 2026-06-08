@@ -12,10 +12,15 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 public static class TcPouParser
 {
     // ── POU header regex ────────────────────────────────────────────────
-    // Matches: [ABSTRACT] FUNCTION_BLOCK|PROGRAM|FUNCTION|INTERFACE Name [EXTENDS Base] [IMPLEMENTS I1, I2]
+    // Matches: FUNCTION_BLOCK|PROGRAM|FUNCTION|INTERFACE [ABSTRACT|FINAL] Name [EXTENDS Base] [IMPLEMENTS I1, I2]
+    // TwinCAT 3 places the ABSTRACT/FINAL modifier AFTER the keyword
+    // (e.g. "FUNCTION_BLOCK ABSTRACT MODE_PHASE_BASECLASS EXTENDS CM_ControlModule").
+    // The previous pattern only allowed a LEADING "ABSTRACT" — which never occurs in
+    // TwinCAT — so every abstract FB captured the literal "ABSTRACT" as its name and
+    // lost its EXTENDS clause, flattening the whole inheritance chain to "(none)".
     private static readonly Regex HeaderRegex = new(
-        @"^\s*(?<abstract>ABSTRACT\s+)?" +
-        @"(?<type>FUNCTION_BLOCK|PROGRAM|FUNCTION|INTERFACE)\s+" +
+        @"^\s*(?<type>FUNCTION_BLOCK|PROGRAM|FUNCTION|INTERFACE)\s+" +
+        @"(?:(?<abstract>ABSTRACT)\s+|FINAL\s+)?" +
         @"(?<name>\w+)" +
         @"(?:\s+EXTENDS\s+(?<extends>\w+))?" +
         @"(?:\s+IMPLEMENTS\s+(?<implements>.+?))?$",
@@ -33,19 +38,25 @@ public static class TcPouParser
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     // ── Method declaration header ───────────────────────────────────────
+    // Multiline: a method's <Declaration> CDATA frequently opens with a comment
+    // or {attribute} pragma line BEFORE the METHOD line. Without Multiline the
+    // ^METHOD anchor only matched when METHOD was the very first line, so any
+    // method with a leading comment silently lost its visibility and defaulted
+    // to PUBLIC (e.g. "//...\nMETHOD PROTECTED _Asynchronous" was read PUBLIC).
     private static readonly Regex MethodHeaderRegex = new(
         @"^\s*METHOD\s+(?:(?<vis>PUBLIC|PROTECTED|PRIVATE|INTERNAL)\s+)?" +
         @"(?:(?<abstract>ABSTRACT)\s+)?" +
         @"(?<name>\w+)" +
         @"(?:\s*:\s*(?<ret>\S+))?\s*$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
     // ── Property declaration header ─────────────────────────────────────
+    // Multiline for the same reason as MethodHeaderRegex (leading comment/pragma).
     private static readonly Regex PropertyHeaderRegex = new(
         @"^\s*PROPERTY\s+(?:(?<vis>PUBLIC|PROTECTED|PRIVATE|INTERNAL)\s+)?" +
         @"(?<name>\w+)" +
         @"\s*:\s*(?<type>.+?)\s*$",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
     // ── {attribute 'name'} pragmas (POU / method / property level) ──────
     private static readonly Regex AttributeRegex = new(

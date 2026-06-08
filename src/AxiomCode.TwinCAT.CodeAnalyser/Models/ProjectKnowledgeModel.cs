@@ -8,9 +8,12 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Models;
 /// </summary>
 public sealed class ProjectKnowledgeModel
 {
-    /// <summary>Bump when the serialized shape changes so stale caches are discarded
-    /// rather than deserialized against a newer model.</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>Bump when the serialized shape OR the parser's extraction logic changes,
+    /// so stale caches are discarded and the project is re-parsed rather than served from
+    /// a cache built by an older parser. (v2: fixed EXTENDS resolution for ABSTRACT FBs and
+    /// method/property access-modifier parsing when a leading comment/pragma precedes the
+    /// declaration — both previously yielded wrong inheritance/visibility in cached models.)</summary>
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
