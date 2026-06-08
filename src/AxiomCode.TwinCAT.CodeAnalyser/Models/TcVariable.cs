@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace AxiomCode.TwinCAT.CodeAnalyser.Models;
 
 public enum VarScope
@@ -35,5 +37,6 @@ public class TcVariable
     public string? ConstructorArgs { get; set; }
 
     /// <summary>The unwrapped type for REFERENCE TO / POINTER TO.</summary>
+    [JsonIgnore]
     public string BaseType => IsReference || IsPointer ? DataType : DataType;
 }
