@@ -28,6 +28,16 @@ public class TcPou
     public string RawDeclaration { get; set; } = "";
     public string RawImplementation { get; set; } = "";
 
+    /// <summary>The implementation language of the POU body. ST bodies keep their
+    /// text in <see cref="RawImplementation"/>; graphical bodies (FBD/LD/IL/SFC/CFC)
+    /// are decoded into <see cref="Graphical"/> and were previously dropped entirely
+    /// (the legacy parser read only &lt;Implementation&gt;&lt;ST&gt;).</summary>
+    public ImplLanguage Language { get; set; } = ImplLanguage.None;
+
+    /// <summary>Decoded graphical body (networks/boxes/operands) when
+    /// <see cref="Language"/> is FBD/LD/IL/SFC/CFC; null for ST or empty bodies.</summary>
+    public TcGraphicalImpl? Graphical { get; set; }
+
     // Resolved inheritance chain (populated by InheritanceResolver)
     public List<string> InheritanceChain { get; set; } = new();
     public List<TcVariable> AllVariables { get; set; } = new(); // Including inherited

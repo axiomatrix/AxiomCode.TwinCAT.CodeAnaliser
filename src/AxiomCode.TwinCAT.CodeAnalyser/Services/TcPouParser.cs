@@ -79,8 +79,29 @@ public static class TcPouParser
             }
 
             // ── Implementation ──────────────────────────────────────
-            var implElement = pouElement.Element("Implementation")?.Element("ST");
-            pou.RawImplementation = ExtractCdata(implElement);
+            // ST bodies live in <Implementation><ST>. Graphical bodies (FBD/LD/IL
+            // via <NWL>, plus SFC/CFC) were previously dropped — the parser only
+            // looked at <ST>. Now: read ST when present, else decode the graphical
+            // body and mirror a readable ST-equivalent into RawImplementation so
+            // every downstream consumer (analysis, docs, search) sees the logic.
+            var implementationEl = pouElement.Element("Implementation");
+            var stEl = implementationEl?.Element("ST");
+            if (stEl != null)
+            {
+                pou.RawImplementation = ExtractCdata(stEl);
+                pou.Language = string.IsNullOrWhiteSpace(pou.RawImplementation)
+                    ? ImplLanguage.None : ImplLanguage.ST;
+            }
+            else if (NwlGraphicalParser.IsGraphical(implementationEl))
+            {
+                var graphical = NwlGraphicalParser.Parse(implementationEl);
+                if (graphical != null)
+                {
+                    pou.Graphical        = graphical;
+                    pou.Language         = graphical.Language;
+                    pou.RawImplementation = graphical.StEquivalent;
+                }
+            }
 
             // ── Methods ─────────────────────────────────────────────
             foreach (var methodEl in pouElement.Elements("Method"))
