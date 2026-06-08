@@ -259,6 +259,34 @@ public class AnalyserTools
         });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tool: twincat_call_graph — who-calls-whom across POUs as a Mermaid graph
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_call_graph"), Description(
+        "Render the project CALL GRAPH (who-calls-whom across POUs) as a Mermaid directed graph. " +
+        "Resolves function calls to project FUNCTIONs, FB instance calls (inst() / inst.Method()) " +
+        "to the instance's FB type, SUPER^ to the base class, and graphical box instances; edge " +
+        "weights are call counts. Library/built-in calls are excluded by default. Pass root=<POU> " +
+        "to show only calls reachable from that POU, or include_libraries=true to include external " +
+        "FB/function nodes. The 'mermaid' field is ready to drop into a ```mermaid block.")]
+    public static string CallGraph(
+        AnalyserService analyser,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path,
+        [Description("Optional root POU — show only the calls reachable from it")]
+        string? root = null,
+        [Description("Include library/built-in callees as nodes (default false)")]
+        bool include_libraries = false)
+    {
+        return RunWithProject(analyser, project_path, project =>
+            JsonSerializer.Serialize(new
+            {
+                Root    = root,
+                Mermaid = CallGraphRenderer.ToMermaid(project, root, include_libraries),
+            }, JsonOpts));
+    }
+
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Tool 3: twincat_alarm_list
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
