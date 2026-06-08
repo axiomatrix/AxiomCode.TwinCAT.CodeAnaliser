@@ -191,6 +191,74 @@ public class AnalyserTools
         });
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tool: twincat_flowchart — Structured-Text program flow as a Mermaid flowchart
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [McpServerTool(Name = "twincat_flowchart"), Description(
+        "Render the PROGRAM FLOW of a Structured Text POU (or one of its methods/actions) as a " +
+        "Mermaid flowchart: IF/ELSIF/ELSE and CASE become decision nodes, FOR/WHILE/REPEAT become " +
+        "loops, RETURN/EXIT are terminals, and runs of simple statements become process boxes. " +
+        "Call with pou=<Name> for the POU body (optionally method=<Name> for a method/action); " +
+        "call WITHOUT 'pou' to list the POUs that have ST bodies. The 'mermaid' field is ready to " +
+        "drop into a ```mermaid block.")]
+    public static string Flowchart(
+        AnalyserService analyser,
+        [Description("Path to the TwinCAT PLC project directory")]
+        string project_path,
+        [Description("POU name; omit to list POUs that have ST bodies")]
+        string? pou = null,
+        [Description("Optional method/action name within the POU")]
+        string? method = null)
+    {
+        return RunWithProject(analyser, project_path, project =>
+        {
+            if (string.IsNullOrWhiteSpace(pou))
+            {
+                var units = project.POUs.Values
+                    .Where(p => !string.IsNullOrWhiteSpace(p.RawImplementation) || p.Methods.Any(m => !string.IsNullOrWhiteSpace(m.Body)))
+                    .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => new
+                    {
+                        p.Name,
+                        HasBody = !string.IsNullOrWhiteSpace(p.RawImplementation),
+                        Methods = p.Methods.Where(m => !string.IsNullOrWhiteSpace(m.Body)).Select(m => m.Name).ToList(),
+                    });
+                return JsonSerializer.Serialize(new { Units = units, Hint = "Call again with pou=<Name> (and optionally method=<Name>)." }, JsonOpts);
+            }
+
+            var target = project.POUs.Values.FirstOrDefault(p => string.Equals(p.Name, pou, StringComparison.OrdinalIgnoreCase));
+            if (target is null)
+                return JsonSerializer.Serialize(new { Error = "PouNotFound", Pou = pou }, JsonOpts);
+
+            string body, unit;
+            if (!string.IsNullOrWhiteSpace(method))
+            {
+                var m = target.Methods.FirstOrDefault(x => string.Equals(x.Name, method, StringComparison.OrdinalIgnoreCase));
+                if (m is null)
+                    return JsonSerializer.Serialize(new { Error = "MethodNotFound", Pou = target.Name, Method = method, Available = target.Methods.Select(x => x.Name) }, JsonOpts);
+                body = m.Body; unit = $"{target.Name}.{m.Name}";
+            }
+            else { body = target.RawImplementation; unit = target.Name; }
+
+            if (string.IsNullOrWhiteSpace(body))
+                return JsonSerializer.Serialize(new
+                {
+                    Error = "EmptyBody",
+                    Unit  = unit,
+                    Hint  = "This unit has no ST body — it may be graphical (try twincat_fbd_diagram) or a method-only FB.",
+                }, JsonOpts);
+
+            return JsonSerializer.Serialize(new
+            {
+                Pou     = target.Name,
+                Method  = method,
+                Unit    = unit,
+                Mermaid = StFlowchartRenderer.ToMermaid(body, unit),
+            }, JsonOpts);
+        });
+    }
+
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Tool 3: twincat_alarm_list
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
