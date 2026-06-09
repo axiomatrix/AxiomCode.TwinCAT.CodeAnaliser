@@ -24,6 +24,10 @@ public class TcProject
     public List<DriveManagerArtifact> DriveManagerArtifacts { get; set; } = new();
     public List<ScopeArtifact> ScopeArtifacts { get; set; } = new();
 
+    // Hardware topology (.xti / .tsproj) + the reconciled software↔hardware IO map.
+    public List<HardwareBox> HardwareBoxes { get; set; } = new();
+    public List<UnifiedIoRow> UnifiedIo { get; set; } = new();
+
     // Summary
     public ProjectSummary Summary { get; set; } = new();
 }
@@ -41,6 +45,9 @@ public class ProjectSummary
     public int UnresolvedAlarms { get; set; }
     public int StateMachineCount { get; set; }
     public int IoPointCount { get; set; }
+    public int HardwareBoxCount { get; set; }
+    public int HardwareChannelCount { get; set; }
+    public int UnifiedIoRowCount { get; set; }
     public int UnresolvedTypeCount { get; set; }
     public int TreeDepth { get; set; }
 

@@ -12,8 +12,9 @@ public sealed class ProjectKnowledgeModel
     /// so stale caches are discarded and the project is re-parsed rather than served from
     /// a cache built by an older parser. (v2: fixed EXTENDS resolution for ABSTRACT FBs and
     /// method/property access-modifier parsing when a leading comment/pragma precedes the
-    /// declaration — both previously yielded wrong inheritance/visibility in cached models.)</summary>
-    public const int CurrentSchemaVersion = 2;
+    /// declaration. v3: added EtherCAT hardware topology (.xti boxes/channels) and the
+    /// reconciled software↔hardware unified IO map.)</summary>
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 

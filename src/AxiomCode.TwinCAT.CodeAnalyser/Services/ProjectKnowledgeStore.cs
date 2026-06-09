@@ -22,7 +22,7 @@ namespace AxiomCode.TwinCAT.CodeAnalyser.Services;
 public sealed class ProjectKnowledgeStore
 {
     private static readonly string[] SourceExtensions =
-        { ".TcPOU", ".TcDUT", ".TcGVL", ".TcIO", ".plcproj", ".tsproj" };
+        { ".TcPOU", ".TcDUT", ".TcGVL", ".TcIO", ".plcproj", ".tsproj", ".xti", ".tmc" };
 
     private static readonly string[] ExcludedDirs =
         { "_Boot", "_CompileInfo", "bin", "obj", ".git", ".svn", ".vs" };

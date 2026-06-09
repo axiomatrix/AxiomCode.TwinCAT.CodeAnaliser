@@ -144,6 +144,12 @@ public class AnalyserService
         // Step 7b: Distribute IO mappings to tree nodes
         DistributeIoToTree(project);
 
+        // Step 7c: Parse the EtherCAT hardware topology (.xti boxes + IO links).
+        project.HardwareBoxes = HardwareTopologyParser.Discover(normalizedPath, _logger);
+
+        // Step 7d: Reconcile software IO + hardware topology into the unified IO map.
+        project.UnifiedIo = UnifiedIoReconciler.Build(project);
+
         // Step 8: Project-surface artifact discovery
         project.LibraryDependencies = LibraryDependencyParser.Discover(normalizedPath);
         project.SafetyArtifacts = SafetyProjectParser.Discover(normalizedPath);
@@ -156,8 +162,9 @@ public class AnalyserService
         _cache[normalizedPath] = project;
 
         _logger.LogInformation(
-            "Analysis complete: {A} alarms, {S} state machines, {I} IO points, {L} libraries, {Sf} safety, {D} drives, {Sc} scopes",
+            "Analysis complete: {A} alarms, {S} state machines, {I} IO points, {Hb} HW boxes, {Ui} unified IO rows, {L} libraries, {Sf} safety, {D} drives, {Sc} scopes",
             project.AllAlarms.Count, project.AllStateMachines.Count, project.AllIoMappings.Count,
+            project.HardwareBoxes.Count, project.UnifiedIo.Count,
             project.LibraryDependencies.Count, project.SafetyArtifacts.Count,
             project.DriveManagerArtifacts.Count, project.ScopeArtifacts.Count);
 
@@ -187,6 +194,9 @@ public class AnalyserService
         s.UnresolvedAlarms = project.AllAlarms.Count(a => a.Severity == AlarmSeverity.Unresolved);
         s.StateMachineCount = project.AllStateMachines.Count;
         s.IoPointCount = project.AllIoMappings.Count;
+        s.HardwareBoxCount = project.HardwareBoxes.Count;
+        s.HardwareChannelCount = project.HardwareBoxes.Sum(b => b.Channels.Count);
+        s.UnifiedIoRowCount = project.UnifiedIo.Count;
         s.UnresolvedTypeCount = project.UnresolvedTypes.Count;
         s.TreeDepth = CalcTreeDepth(project.ObjectTree, 0);
         s.LibraryDependencyCount = project.LibraryDependencies.Count;
